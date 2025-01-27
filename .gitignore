@@ -10,3 +10,7 @@ utils/mc_log_gui/*.png
 compile_commands.json
 .vscode/
 utils/build_and_install_user_config.sh
+build/build
+.cache/*
+src/mc_tasks/ObserverbasedImpedance.cpp
+src/mc_tasks/README.md
