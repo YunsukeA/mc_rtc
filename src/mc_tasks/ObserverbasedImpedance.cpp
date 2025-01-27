@@ -25,6 +25,9 @@ public:
 } // namespace force
 } // namespace mc_tasks
 
+// TODO: move to include/mc_tasks/ObserverbasedImpedance.h
+
+// #include <mc_tasks/ObserverbasedImpedance.h>
 #include <mc_tasks/MetaTaskLoader.h>
 
 namespace mc_tasks
@@ -56,6 +59,9 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
   measuredWrench_ = robots.robot(rIndex).surfaceWrench(surface());
   lowPass_.update(measuredWrench_);
   filteredMeasuredWrench_ = lowPass_.eval();
+
+  // TODO: replace measuredWrench_ with EstimatedContactWrench
+  // TODO: Transform the estimated contact wrench to the frame which is same to measuredWrench_
 
   // 2. Compute the compliance acceleration
   sva::MotionVecd deltaCompVelWPrev = deltaCompVelW_;
