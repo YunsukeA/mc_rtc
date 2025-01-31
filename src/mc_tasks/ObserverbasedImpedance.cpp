@@ -120,6 +120,11 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
   mc_tasks::TransformTask::refAccel(T_0_s * (targetAccelW_ + deltaCompAccelW_)); // represented in the surface frame
   mc_tasks::TransformTask::refVelB(T_0_s * (targetVelW_ + deltaCompVelW_)); // represented in the surface frame
   mc_tasks::TransformTask::target(compliancePose()); // represented in the world frame
+
+  logger().addLogEntry("ObserverbasedImpedance_" + "estimatedContactWrench_" + " surfaceFrame",
+                       [this]() { return estimatedContactWrench_; });
+  logger().addLogEntry("estimatedContactWrench_" + "forcesensor_surfaceFrame",
+                       [this]() -> const sva::ForceVecd & { return this->robot().surfaceWrench(this->surface()); });
 }
 
 void ObserverbasedImpedance::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
@@ -195,16 +200,18 @@ sva::ForceVecd ObserverbasedImpedance::replaceForceTorque(sva::ForceVecd target)
   return tmp;
 }
 
-void ObserverbasedImpedance::addTologger(mc_rtc::Logger & logger)
+void ObserverbasedImpedance::addToLogger(mc_rtc::Logger & logger)
 {
   std::string category = "ObserverbasedImpedance_";
   std::string subcategory_est = "estimatedContactWrench_";
   std::string subcategory_force = "forcesensor_surfaceFrame";
+  mc_rtc::log::info("ObserverbasedImpedance::addToLogger!");
 
-  logger.addLogEntry(category + subcategory_est + " surfaceFrame", [this]() { return estimatedContactWrench_; });
+  // logger().addLogEntry("ObserverbasedImpedance_" + "estimatedContactWrench_" + " surfaceFrame",
+  //                    [this]() { return estimatedContactWrench_; });
 
-  logger.addLogEntry(category + subcategory_force,
-                     [this]() -> const sva::ForceVecd & { return this->robot().surfaceWrench(this->surface()); });
+  // logger.addLogEntry("estimatedContactWrench_" + "forcesensor_surfaceFrame",
+  //                    [this]() -> const sva::ForceVecd & { return this->robot().surfaceWrench(this->surface()); });
 }
 
 } // namespace force
