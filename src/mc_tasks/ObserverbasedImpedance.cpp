@@ -1,34 +1,5 @@
-#pragma once
-#include <mc_tasks/ImpedanceTask.h>
-
-namespace mc_tasks
-{
-
-namespace force
-{
-struct MC_TASKS_DLLAPI ObserverbasedImpedance : ImpedanceTask
-{
-public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  ObserverbasedImpedance(const std::string & surfaceName,
-                         const mc_rbdyn::Robots & robots,
-                         unsigned robotIndex,
-                         double stiffness = 5.0,
-                         double weight = 1000.0);
-
-  ObserverbasedImpedance(const mc_rbdyn::RobotFrame & frame, double stiffness = 5.0, double weight = 1000.0);
-
-  void update(mc_solver::QPSolver & solver) override;
-};
-
-} // namespace force
-} // namespace mc_tasks
-
-// TODO: move to include/mc_tasks/ObserverbasedImpedance.h
-
-// #include <mc_tasks/ObserverbasedImpedance.h>
 #include <mc_tasks/MetaTaskLoader.h>
+#include <mc_tasks/ObserverbasedImpedance.h>
 
 namespace mc_tasks
 {
@@ -65,7 +36,7 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
 
   // 2. Compute the compliance acceleration
   sva::MotionVecd deltaCompVelWPrev = deltaCompVelW_;
-  sva::PTransformd T_0_s(surfacePose().rotation());
+  sva::PTransformd T_0_s(surfacePose().rotation()); // sva::PTransformd is transform function for wrench vector
   // deltaCompAccelW_ is represented in the world frame
   //   \Delta \ddot{p}_{cd} = - \frac{D}{M} \Delta \dot{p}_{cd} - \frac{K}{M} \Delta p_{cd})
   //   + \frac{K_f}{M} (f_m - f_d) where \Delta p_{cd} = p_c - p_d
