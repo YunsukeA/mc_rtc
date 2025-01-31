@@ -29,14 +29,9 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
   double dt = solver.dt();
 
   // 1. Filter the estimated wrench
-  getestimatedExternalWrench();
+  getestimatedContactWrench(surface());
   lowPass_.update(estimatedContactWrench_);
   filteredMeasuredWrench_ = lowPass_.eval();
-
-  getestimatedContactWrench(surface());
-
-  // TODO: replace measuredWrench_ with EstimatedContactWrench
-  // TODO: Transform the estimated contact wrench to the frame which is same to measuredWrench_
 
   sva::MotionVecd deltaCompVelWPrev = deltaCompVelW_;
   sva::PTransformd T_0_s(surfacePose().rotation());
@@ -198,6 +193,18 @@ sva::ForceVecd ObserverbasedImpedance::replaceForceTorque(sva::ForceVecd target)
   tmp.force() = target.couple();
 
   return tmp;
+}
+
+void ObserverbasedImpedance::addTologger(mc_rtc::Logger & logger)
+{
+  std::string category = "ObserverbasedImpedance_";
+  std::string subcategory_est = "estimatedContactWrench_";
+  std::string subcategory_force = "forcesensor_surfaceFrame";
+
+  logger.addLogEntry(category + subcategory_est + " surfaceFrame", [this]() { return estimatedContactWrench_; });
+
+  logger.addLogEntry(category + subcategory_force,
+                     [this]() -> const sva::ForceVecd & { return this->robot().surfaceWrench(this->surface()); });
 }
 
 } // namespace force

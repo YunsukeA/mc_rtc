@@ -28,6 +28,8 @@ public:
   // state-observation's value is [force, torque]^T style, but the ImpedanceTask's value is [torque, force]^T style
   sva::ForceVecd replaceForceTorque(sva::ForceVecd target);
 
+  void addTologger(mc_rtc::Logger & logger);
+
 private:
   std::string robot_;
   bool exportContactWrench_ = false;
