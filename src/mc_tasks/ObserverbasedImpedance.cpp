@@ -1,5 +1,7 @@
 #include <mc_tasks/MetaTaskLoader.h>
 #include <mc_tasks/ObserverbasedImpedance.h>
+#include <SpaceVecAlg/SpaceVecAlg>
+#include "mc_rtc/logging.h"
 
 namespace mc_tasks
 {
@@ -26,29 +28,21 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
 {
   double dt = solver.dt();
 
-  // 1. Filter the measured wrench
-  measuredWrench_ = robots.robot(rIndex).surfaceWrench(surface());
-  lowPass_.update(measuredWrench_);
+  // 1. Filter the estimated wrench
+  getestimatedExternalWrench();
+  lowPass_.update(estimatedContactWrench_);
   filteredMeasuredWrench_ = lowPass_.eval();
+
+  getestimatedContactWrench(surface());
 
   // TODO: replace measuredWrench_ with EstimatedContactWrench
   // TODO: Transform the estimated contact wrench to the frame which is same to measuredWrench_
 
-  // 2. Compute the compliance acceleration
   sva::MotionVecd deltaCompVelWPrev = deltaCompVelW_;
-  sva::PTransformd T_0_s(surfacePose().rotation()); // sva::PTransformd is transform function for wrench vector
-  // deltaCompAccelW_ is represented in the world frame
-  //   \Delta \ddot{p}_{cd} = - \frac{D}{M} \Delta \dot{p}_{cd} - \frac{K}{M} \Delta p_{cd})
-  //   + \frac{K_f}{M} (f_m - f_d) where \Delta p_{cd} = p_c - p_d
-  // See the Constructor description for the definition of symbols
-  deltaCompVelW_ = T_0_s.invMul( // T_0_s.invMul transforms the MotionVecd value from surface to world frame
-      sva::MotionVecd(
-          // Compute in the surface frame because the impedance parameters and wrench gain are represented in the
-          // surface frame
-          gains().D().vector().cwiseInverse().cwiseProduct(
-              // T_0_s transforms the MotionVecd value from world to surface frame
-              -gains().K().vector().cwiseProduct((T_0_s * sva::transformVelocity(deltaCompPoseW_)).vector())
-              + gains().wrench().vector().cwiseProduct((filteredMeasuredWrench_ - targetWrench_).vector()))));
+  sva::PTransformd T_0_s(surfacePose().rotation());
+  deltaCompVelW_ = T_0_s.invMul(sva::MotionVecd(gains().D().vector().cwiseInverse().cwiseProduct(
+      -gains().K().vector().cwiseProduct((T_0_s * sva::transformVelocity(deltaCompPoseW_)).vector())
+      + gains().wrench().vector().cwiseProduct((filteredMeasuredWrench_ - targetWrench_).vector()))));
   deltaCompAccelW_ = (deltaCompVelW_ - deltaCompVelWPrev) / dt;
 
   if(deltaCompAccelW_.linear().norm() > deltaCompAccelLinLimit_)
@@ -132,6 +126,80 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
   mc_tasks::TransformTask::refVelB(T_0_s * (targetVelW_ + deltaCompVelW_)); // represented in the surface frame
   mc_tasks::TransformTask::target(compliancePose()); // represented in the world frame
 }
+
+void ObserverbasedImpedance::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
+{
+  if(config.has("gains")) { gains_ = config("gains"); }
+  if(config.has("wrench")) { targetWrench(config("wrench")); }
+  if(config.has("cutoffPeriod")) { cutoffPeriod(config("cutoffPeriod")); }
+  TransformTask::load(solver, config);
+  // The TransformTask::load function above only sets
+  // the TrajectoryTaskGeneric's target, but not the compliance target, so we
+  // need to set it manually here.
+  targetPose(TransformTask::target());
+
+  robot_ = config("robot", robot().name());
+  MaxContacts_ = config("MaxContacts", 4);
+  if(config.has("exportValue"))
+  {
+    auto exportValueConfig = config("exportValue");
+    if(exportValueConfig.has("exportContactWrench")) { exportValueConfig("exportContactWrench", exportContactWrench_); }
+    if(exportValueConfig.has("exportExternalWrench"))
+    {
+      exportValueConfig("exportExternalWrench", exportExternalWrench_);
+    }
+  }
+  mc_rtc::log::info("exportContactWrench_: {}", exportContactWrench_); // for debug
+  mc_rtc::log::info("exportExternalWrench_: {}", exportExternalWrench_); // for debug
+}
+
+void ObserverbasedImpedance::getestimatedExternalWrench()
+{
+  if(exportExternalWrench_)
+  {
+    if(datastore().has(robot_ + "::estimatedExternalWrench"))
+    {
+      estimatedExternalWrench_centroid_ = datastore().get<sva::ForceVecd>(robot_ + "::estimatedExternalWrench");
+    }
+  }
+
+  return;
+}
+
+void ObserverbasedImpedance::getestimatedContactWrench(const std::string & surface)
+{
+  static const std::map<std::string, int> surfaceMap = {
+      {"RightFoot", 0}, {"LeftFoot", 1}, {"RightHand", 2}, {"LeftHand", 3}};
+
+  auto it = surfaceMap.find(surface);
+  if(it == surfaceMap.end())
+  {
+    mc_rtc::log::error("[ObserverbasedImpedance] Surface name is not correct");
+    return;
+  }
+
+  int i = it->second;
+  if(exportContactWrench_)
+  {
+    if(datastore().has(robot_ + "::estimatedContactWrench_" + std::to_string(i)))
+    {
+      estimatedContactWrench_ =
+          datastore().get<sva::ForceVecd>(robot_ + "::estimatedContactWrench_" + std::to_string(i));
+      estimatedContactWrench_ = replaceForceTorque(estimatedContactWrench_);
+    }
+  }
+  else { mc_rtc::log::error("[ObserverbasedImpedance] No EstimatedContactWrench is exported"); }
+}
+
+sva::ForceVecd ObserverbasedImpedance::replaceForceTorque(sva::ForceVecd target)
+{
+  sva::ForceVecd tmp = sva::ForceVecd::Zero();
+  tmp.couple() = target.force();
+  tmp.force() = target.couple();
+
+  return tmp;
+}
+
 } // namespace force
 } // namespace mc_tasks
 
