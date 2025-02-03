@@ -22,6 +22,7 @@ ObserverbasedImpedance::ObserverbasedImpedance(const mc_rbdyn::RobotFrame & fram
 {
   type_ = "observerbasedImpedance";
   name_ = "observerbased_impedance_" + robots.robot(rIndex).name() + "_" + frame.name();
+  mc_rtc::log::info("ObserverbasedImpedance::ObserverbasedImpedance ObserverbasedImpedance Task Initialized!");
 }
 
 void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
@@ -42,14 +43,14 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
 
   if(deltaCompAccelW_.linear().norm() > deltaCompAccelLinLimit_)
   {
-    mc_rtc::log::warning("[FirstOrderImpedanceTask] Linear deltaCompAccel limited from {} to {}",
+    mc_rtc::log::warning("[ObserverbasedImpedanceTask] Linear deltaCompAccel limited from {} to {}",
                          deltaCompAccelW_.linear().norm(), deltaCompAccelLinLimit_);
     deltaCompAccelW_.linear().normalize();
     deltaCompAccelW_.linear() *= deltaCompAccelLinLimit_;
   }
   if(deltaCompAccelW_.angular().norm() > deltaCompAccelAngLimit_)
   {
-    mc_rtc::log::warning("[FirstOrderImpedanceTask] Angular deltaCompAccel limited from {} to {}",
+    mc_rtc::log::warning("[ObserverbasedImpedanceTask] Angular deltaCompAccel limited from {} to {}",
                          deltaCompAccelW_.angular().norm(), deltaCompAccelAngLimit_);
     deltaCompAccelW_.angular().normalize();
     deltaCompAccelW_.angular() *= deltaCompAccelAngLimit_;
@@ -78,14 +79,14 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
 
   if(deltaCompVelW_.linear().norm() > deltaCompVelLinLimit_)
   {
-    mc_rtc::log::warning("[FirstOrderImpedanceTask] Linear deltaCompVel limited from {} to {}",
+    mc_rtc::log::warning("[ObserverbasedImpedanceTask] Linear deltaCompVel limited from {} to {}",
                          deltaCompVelW_.linear().norm(), deltaCompVelLinLimit_);
     deltaCompVelW_.linear().normalize();
     deltaCompVelW_.linear() *= deltaCompVelLinLimit_;
   }
   if(deltaCompVelW_.angular().norm() > deltaCompVelAngLimit_)
   {
-    mc_rtc::log::warning("[FirstOrderImpedanceTask] Angular deltaCompVel limited from {} to {}",
+    mc_rtc::log::warning("[ObserverbasedImpedanceTask] Angular deltaCompVel limited from {} to {}",
                          deltaCompVelW_.angular().norm(), deltaCompVelLinLimit_);
     deltaCompVelW_.angular().normalize();
     deltaCompVelW_.angular() *= deltaCompVelAngLimit_;
@@ -93,7 +94,7 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
 
   if(deltaCompPoseW_.translation().norm() > deltaCompPoseLinLimit_)
   {
-    mc_rtc::log::warning("[FirstOrderImpedanceTask] Linear deltaCompPose limited from {} to {}",
+    mc_rtc::log::warning("[ObserverbasedImpedanceTask] Linear deltaCompPose limited from {} to {}",
                          deltaCompPoseW_.translation().norm(), deltaCompPoseLinLimit_);
     deltaCompPoseW_.translation().normalize();
     deltaCompPoseW_.translation() *= deltaCompPoseLinLimit_;
@@ -101,7 +102,7 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
   Eigen::AngleAxisd aaDeltaCompRot(deltaCompPoseW_.rotation());
   if(aaDeltaCompRot.angle() > deltaCompPoseAngLimit_)
   {
-    mc_rtc::log::warning("[FirstOrderImpedanceTask] Angular deltaCompPose limited from {} to {}",
+    mc_rtc::log::warning("[ObserverbasedImpedanceTask] Angular deltaCompPose limited from {} to {}",
                          aaDeltaCompRot.angle(), deltaCompPoseAngLimit_);
     aaDeltaCompRot.angle() = deltaCompPoseAngLimit_;
     deltaCompPoseW_.rotation() = aaDeltaCompRot.toRotationMatrix();
@@ -123,8 +124,11 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
 
   logger().addLogEntry("ObserverbasedImpedance_" + "estimatedContactWrench_" + " surfaceFrame",
                        [this]() { return estimatedContactWrench_; });
+  mc_rtc::log::info("estimatedContactWrench_: {}", estimatedContactWrench_); // for debug
   logger().addLogEntry("estimatedContactWrench_" + "forcesensor_surfaceFrame",
                        [this]() -> const sva::ForceVecd & { return this->robot().surfaceWrench(this->surface()); });
+  mc_rtc::log::info("this->robot().surfaceWrench(this->surface()): {}",
+                    this->robot().surfaceWrench(this->surface())); // for debug
 }
 
 void ObserverbasedImpedance::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)

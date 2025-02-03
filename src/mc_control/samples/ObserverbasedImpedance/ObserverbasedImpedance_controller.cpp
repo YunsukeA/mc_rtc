@@ -50,6 +50,8 @@ ObserverbasedImpedance::ObserverbasedImpedance(std::shared_ptr<mc_rbdyn::RobotMo
   gains.damper() = {100 * posD, posD};
   gains.spring() = {100 * posK, posK};
   gains.wrench() = {Eigen::Vector3d::Ones(), Eigen::Vector3d::Ones()};
+
+  mc_rtc::log::info("Impedance Controller Initialized!");
 }
 
 void ObserverbasedImpedance::reset(const ControllerResetData & reset_data)
