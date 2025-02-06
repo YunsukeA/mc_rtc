@@ -9,6 +9,24 @@
 #include <mc_tasks/TransformTask.h>
 #include <SpaceVecAlg/SpaceVecAlg>
 
+#include <mc_tasks/MetaTaskLoader.h>
+
+#include <mc_rbdyn/configuration_io.h>
+#include <mc_rbdyn/rpy_utils.h>
+
+#include <mc_rtc/gui/ArrayInput.h>
+#include <mc_rtc/gui/ArrayLabel.h>
+#include <mc_rtc/gui/NumberInput.h>
+#include <mc_rtc/gui/Transform.h>
+
+#include <mc_rtc/deprecated.h>
+#include <SpaceVecAlg/SpaceVecAlg>
+
+#include <mc_control/MCController.h>
+#include <mc_control/mc_controller.h>
+#include <mc_rtc/DataStore.h>
+#include <mc_rtc/log/Logger.h>
+
 namespace mc_tasks
 {
 
@@ -236,6 +254,8 @@ private:
   sva::ForceVecd estimatedContactWrench_;
 
   sva::ForceVecd estimatedExternalWrench_centroid_;
+
+  mc_rtc::DataStore datastore;
 };
 
 } // namespace force

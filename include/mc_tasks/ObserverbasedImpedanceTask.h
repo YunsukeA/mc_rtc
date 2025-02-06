@@ -1,23 +1,27 @@
 #pragma once
 #include <mc_tasks/ImpedanceTask.h>
 
+#include <mc_rtc/DataStore.h>
+#include <mc_rtc/log/Logger.h>
+#include <SpaceVecAlg/SpaceVecAlg>
+
 namespace mc_tasks
 {
 
 namespace force
 {
-struct MC_TASKS_DLLAPI ObserverbasedImpedance : ImpedanceTask
+struct MC_TASKS_DLLAPI ObserverbasedImpedanceTask : ImpedanceTask
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  ObserverbasedImpedance(const std::string & surfaceName,
-                         const mc_rbdyn::Robots & robots,
-                         unsigned robotIndex,
-                         double stiffness = 5.0,
-                         double weight = 1000.0);
+  ObserverbasedImpedanceTask(const std::string & surfaceName,
+                             const mc_rbdyn::Robots & robots,
+                             unsigned robotIndex,
+                             double stiffness = 5.0,
+                             double weight = 1000.0);
 
-  ObserverbasedImpedance(const mc_rbdyn::RobotFrame & frame, double stiffness = 5.0, double weight = 1000.0);
+  ObserverbasedImpedanceTask(const mc_rbdyn::RobotFrame & frame, double stiffness = 5.0, double weight = 1000.0);
 
   void update(mc_solver::QPSolver & solver) override;
   void load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config) override;
@@ -29,6 +33,8 @@ public:
   sva::ForceVecd replaceForceTorque(sva::ForceVecd target);
 
   void addToLogger(mc_rtc::Logger & logger) override;
+
+  mc_rtc::DataStore datastore;
 
 private:
   std::string robot_;

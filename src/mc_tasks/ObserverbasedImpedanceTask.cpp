@@ -1,31 +1,31 @@
 #include <mc_tasks/MetaTaskLoader.h>
-#include <mc_tasks/ObserverbasedImpedance.h>
-#include <SpaceVecAlg/SpaceVecAlg>
-#include "mc_rtc/logging.h"
+#include <mc_tasks/ObserverbasedImpedanceTask.h>
 
 namespace mc_tasks
 {
 namespace force
 {
 
-ObserverbasedImpedance::ObserverbasedImpedance(const std::string & surfaceName,
-                                               const mc_rbdyn::Robots & robots,
-                                               unsigned robotIndex,
-                                               double stiffness,
-                                               double weight)
-: ObserberbasedImpedance(robots.robot(robotIndex).frame(surfaceName), stiffness, weight)
+ObserverbasedImpedanceTask::ObserverbasedImpedanceTask(const std::string & surfaceName,
+                                                       const mc_rbdyn::Robots & robots,
+                                                       unsigned robotIndex,
+                                                       double stiffness,
+                                                       double weight)
+: ObserverbasedImpedanceTask(robots.robot(robotIndex).frame(surfaceName), stiffness, weight)
 {
 }
 
-ObserverbasedImpedance::ObserverbasedImpedance(const mc_rbdyn::RobotFrame & frame, double stiffness, double weight)
+ObserverbasedImpedanceTask::ObserverbasedImpedanceTask(const mc_rbdyn::RobotFrame & frame,
+                                                       double stiffness,
+                                                       double weight)
 : ImpedanceTask(frame, stiffness, weight)
 {
-  type_ = "observerbasedImpedance";
+  type_ = "ObserverbasedImpedanceTask";
   name_ = "observerbased_impedance_" + robots.robot(rIndex).name() + "_" + frame.name();
-  mc_rtc::log::info("ObserverbasedImpedance::ObserverbasedImpedance ObserverbasedImpedance Task Initialized!");
+  mc_rtc::log::info("ObserverbasedImpedanceTask::ObserverbasedImpedanceTask ObserverbasedImpedanceTask Initialized!");
 }
 
-void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
+void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
 {
   double dt = solver.dt();
 
@@ -122,16 +122,11 @@ void ObserverbasedImpedance::update(mc_solver::QPSolver & solver)
   mc_tasks::TransformTask::refVelB(T_0_s * (targetVelW_ + deltaCompVelW_)); // represented in the surface frame
   mc_tasks::TransformTask::target(compliancePose()); // represented in the world frame
 
-  logger().addLogEntry("ObserverbasedImpedance_" + "estimatedContactWrench_" + " surfaceFrame",
-                       [this]() { return estimatedContactWrench_; });
-  mc_rtc::log::info("estimatedContactWrench_: {}", estimatedContactWrench_); // for debug
-  logger().addLogEntry("estimatedContactWrench_" + "forcesensor_surfaceFrame",
-                       [this]() -> const sva::ForceVecd & { return this->robot().surfaceWrench(this->surface()); });
   mc_rtc::log::info("this->robot().surfaceWrench(this->surface()): {}",
-                    this->robot().surfaceWrench(this->surface())); // for debug
+                    this->robots.robot(rIndex).surfaceWrench(this->surface())); // for debug
 }
 
-void ObserverbasedImpedance::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
+void ObserverbasedImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
 {
   if(config.has("gains")) { gains_ = config("gains"); }
   if(config.has("wrench")) { targetWrench(config("wrench")); }
@@ -142,7 +137,7 @@ void ObserverbasedImpedance::load(mc_solver::QPSolver & solver, const mc_rtc::Co
   // need to set it manually here.
   targetPose(TransformTask::target());
 
-  robot_ = config("robot", robot().name());
+  robot_ = config("robot", robots.robot(rIndex).name());
   MaxContacts_ = config("MaxContacts", 4);
   if(config.has("exportValue"))
   {
@@ -157,20 +152,20 @@ void ObserverbasedImpedance::load(mc_solver::QPSolver & solver, const mc_rtc::Co
   mc_rtc::log::info("exportExternalWrench_: {}", exportExternalWrench_); // for debug
 }
 
-void ObserverbasedImpedance::getestimatedExternalWrench()
+void ObserverbasedImpedanceTask::getestimatedExternalWrench()
 {
   if(exportExternalWrench_)
   {
-    if(datastore().has(robot_ + "::estimatedExternalWrench"))
+    if(datastore.has(robot_ + "::estimatedExternalWrench"))
     {
-      estimatedExternalWrench_centroid_ = datastore().get<sva::ForceVecd>(robot_ + "::estimatedExternalWrench");
+      estimatedExternalWrench_centroid_ = datastore.get<sva::ForceVecd>(robot_ + "::estimatedExternalWrench");
     }
   }
 
   return;
 }
 
-void ObserverbasedImpedance::getestimatedContactWrench(const std::string & surface)
+void ObserverbasedImpedanceTask::getestimatedContactWrench(const std::string & surface)
 {
   static const std::map<std::string, int> surfaceMap = {
       {"RightFoot", 0}, {"LeftFoot", 1}, {"RightHand", 2}, {"LeftHand", 3}};
@@ -178,24 +173,23 @@ void ObserverbasedImpedance::getestimatedContactWrench(const std::string & surfa
   auto it = surfaceMap.find(surface);
   if(it == surfaceMap.end())
   {
-    mc_rtc::log::error("[ObserverbasedImpedance] Surface name is not correct");
+    mc_rtc::log::error("[ObserverbasedImpedanceTask] Surface name is not correct");
     return;
   }
 
   int i = it->second;
   if(exportContactWrench_)
   {
-    if(datastore().has(robot_ + "::estimatedContactWrench_" + std::to_string(i)))
+    if(datastore.has(robot_ + "::estimatedContactWrench_" + std::to_string(i)))
     {
-      estimatedContactWrench_ =
-          datastore().get<sva::ForceVecd>(robot_ + "::estimatedContactWrench_" + std::to_string(i));
+      estimatedContactWrench_ = datastore.get<sva::ForceVecd>(robot_ + "::estimatedContactWrench_" + std::to_string(i));
       estimatedContactWrench_ = replaceForceTorque(estimatedContactWrench_);
     }
   }
-  else { mc_rtc::log::error("[ObserverbasedImpedance] No EstimatedContactWrench is exported"); }
+  else { mc_rtc::log::error("[ObserverbasedImpedanceTask] No EstimatedContactWrench is exported"); }
 }
 
-sva::ForceVecd ObserverbasedImpedance::replaceForceTorque(sva::ForceVecd target)
+sva::ForceVecd ObserverbasedImpedanceTask::replaceForceTorque(sva::ForceVecd target)
 {
   sva::ForceVecd tmp = sva::ForceVecd::Zero();
   tmp.couple() = target.force();
@@ -204,18 +198,20 @@ sva::ForceVecd ObserverbasedImpedance::replaceForceTorque(sva::ForceVecd target)
   return tmp;
 }
 
-void ObserverbasedImpedance::addToLogger(mc_rtc::Logger & logger)
+void ObserverbasedImpedanceTask::addToLogger(mc_rtc::Logger & logger)
 {
-  std::string category = "ObserverbasedImpedance_";
+
+  TransformTask::addToLogger(logger);
+  std::string category = "ObserverbasedImpedanceTask_";
   std::string subcategory_est = "estimatedContactWrench_";
   std::string subcategory_force = "forcesensor_surfaceFrame";
-  mc_rtc::log::info("ObserverbasedImpedance::addToLogger!");
+  mc_rtc::log::info("ObserverbasedImpedanceTask::addToLogger!");
 
-  // logger().addLogEntry("ObserverbasedImpedance_" + "estimatedContactWrench_" + " surfaceFrame",
-  //                    [this]() { return estimatedContactWrench_; });
+  logger.addLogEntry("ObserverbasedImpedanceTask_estimatedContactWrench_surfaceFrame",
+                     [this]() { return estimatedContactWrench_; });
 
-  // logger.addLogEntry("estimatedContactWrench_" + "forcesensor_surfaceFrame",
-  //                    [this]() -> const sva::ForceVecd & { return this->robot().surfaceWrench(this->surface()); });
+  logger.addLogEntry("estimatedContactWrench_forcesensor_surfaceFrame",
+                     [this]() { return this->robots.robot(rIndex).surfaceWrench(this->surface()); });
 }
 
 } // namespace force
@@ -224,23 +220,23 @@ void ObserverbasedImpedance::addToLogger(mc_rtc::Logger & logger)
 namespace
 {
 static auto registered = mc_tasks::MetaTaskLoader::register_load_function(
-    "observerbasedImpedance",
+    "ObserverbasedImpedanceTask",
     [](mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
     {
-      using Allocator = Eigen::aligned_allocator<mc_tasks::force::ObserverbasedImpedance>;
-      const auto robotIndex = robotIndexFromConfig(config, solver.robots(), "observerbasedImpedance");
+      using Allocator = Eigen::aligned_allocator<mc_tasks::force::ObserverbasedImpedanceTask>;
+      const auto robotIndex = robotIndexFromConfig(config, solver.robots(), "ObserverbasedImpedanceTask");
       const auto & robot = solver.robots().robot(robotIndex);
       const auto & frame = [&]() -> const mc_rbdyn::RobotFrame &
       {
         if(config.has("surface"))
         {
-          mc_rtc::log::deprecated("ObserverbasedImpedance", "surface", "frame");
+          mc_rtc::log::deprecated("ObserverbasedImpedanceTask", "surface", "frame");
           return robot.frame(config("surface"));
         }
-        return robot.surface(config("frame"));
+        return robot.frame(config("frame"));
       }();
 
-      auto t = std::make_shared<mc_tasks::force::ObserverbasedImpedance>(Allocator{}, frame);
+      auto t = std::allocate_shared<mc_tasks::force::ObserverbasedImpedanceTask>(Allocator{}, frame);
       t->reset();
       t->load(solver, config);
       return t;

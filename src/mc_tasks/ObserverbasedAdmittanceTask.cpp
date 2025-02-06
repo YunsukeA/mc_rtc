@@ -4,19 +4,6 @@
 
 #include <mc_tasks/ObserverbasedAdmittanceTask.h>
 
-#include <mc_tasks/MetaTaskLoader.h>
-
-#include <mc_rbdyn/configuration_io.h>
-#include <mc_rbdyn/rpy_utils.h>
-
-#include <mc_rtc/gui/ArrayInput.h>
-#include <mc_rtc/gui/ArrayLabel.h>
-#include <mc_rtc/gui/NumberInput.h>
-#include <mc_rtc/gui/Transform.h>
-
-#include <mc_rtc/deprecated.h>
-#include <SpaceVecAlg/SpaceVecAlg>
-
 namespace mc_tasks
 {
 
@@ -109,7 +96,7 @@ void ObserverbasedAdmittanceTask::load(mc_solver::QPSolver & solver, const mc_rt
     maxAngularVel(maxVel.angular());
   }
   TransformTask::load(solver, config);
-  robot_ = config("robot", robot().name());
+  robot_ = config("robot", std::string(robot().name()));
   MaxContacts_ = config("MaxContacts", 4);
   if(config.has("exportValue"))
   {
@@ -169,9 +156,9 @@ void ObserverbasedAdmittanceTask::getestimatedExternalWrench()
 {
   if(exportExternalWrench_)
   {
-    if(datastore().has(robot_ + "::estimatedExternalWrench"))
+    if(datastore.has(robot_ + "::estimatedExternalWrench"))
     {
-      estimatedExternalWrench_centroid_ = datastore().get<sva::ForceVecd>(robot_ + "::estimatedExternalWrench");
+      estimatedExternalWrench_centroid_ = datastore.get<sva::ForceVecd>(robot_ + "::estimatedExternalWrench");
     }
   }
 
@@ -193,10 +180,9 @@ void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & 
   int i = it->second;
   if(exportContactWrench_)
   {
-    if(datastore().has(robot_ + "::estimatedContactWrench_" + std::to_string(i)))
+    if(datastore.has(robot_ + "::estimatedContactWrench_" + std::to_string(i)))
     {
-      estimatedContactWrench_ =
-          datastore().get<sva::ForceVecd>(robot_ + "::estimatedContactWrench_" + std::to_string(i));
+      estimatedContactWrench_ = datastore.get<sva::ForceVecd>(robot_ + "::estimatedContactWrench_" + std::to_string(i));
       estimatedContactWrench_ = replaceForceTorque(estimatedContactWrench_);
     }
   }
