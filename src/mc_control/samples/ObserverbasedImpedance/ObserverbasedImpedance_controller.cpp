@@ -43,10 +43,8 @@ ObserverbasedImpedance::ObserverbasedImpedance(std::shared_ptr<mc_rbdyn::RobotMo
   Eigen::Vector3d posM = Eigen::Vector3d::Constant(1.0);
   Eigen::Vector3d posK = Eigen::Vector3d(100.0, 100.0, 1000.0);
   Eigen::Vector3d posD = Eigen::Vector3d(50.0, 50.0, 100.0);
-  // impedanceTask_ = std::make_shared<mc_tasks::force::ObserverbasedImpedanceTask>("LeftGripper", robots(),
-  //                                                                                robots().robotIndex(), 100.0);
-  impedanceTask_ =
-      std::make_shared<mc_tasks::force::ImpedanceTask>("LeftGripper", robots(), robots().robotIndex(), 100.0);
+  impedanceTask_ = std::make_shared<mc_tasks::force::ObserverbasedImpedanceTask>("LeftGripper", robots(),
+                                                                                 robots().robotIndex(), 100.0);
   auto & gains = impedanceTask_->gains();
   gains.mass() = {100 * posM, posM};
   gains.damper() = {100 * posD, posD};
