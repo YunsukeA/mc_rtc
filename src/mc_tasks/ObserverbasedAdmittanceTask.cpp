@@ -24,7 +24,7 @@ ObserverbasedAdmittanceTask::ObserverbasedAdmittanceTask(const std::string & sur
 ObserverbasedAdmittanceTask::ObserverbasedAdmittanceTask(const mc_rbdyn::RobotFrame & frame,
                                                          double stiffness,
                                                          double weight)
-: TransformTask(frame, stiffness, weight)
+: TransformTask(frame, stiffness, weight), robot_(const_cast<mc_rbdyn::Robot &>(frame.robot()))
 {
   if(!frame.hasForceSensor())
   {
@@ -96,7 +96,6 @@ void ObserverbasedAdmittanceTask::load(mc_solver::QPSolver & solver, const mc_rt
     maxAngularVel(maxVel.angular());
   }
   TransformTask::load(solver, config);
-  robot_ = config("robot", std::string(robot().name()));
   MaxContacts_ = config("MaxContacts", 4);
   if(config.has("exportValue"))
   {
@@ -156,9 +155,9 @@ void ObserverbasedAdmittanceTask::getestimatedExternalWrench()
 {
   if(exportExternalWrench_)
   {
-    if(datastore.has(robot_ + "::estimatedExternalWrench"))
+    if(datastore.has(robot_.name() + "::estimatedExternalWrench"))
     {
-      estimatedExternalWrench_centroid_ = datastore.get<sva::ForceVecd>(robot_ + "::estimatedExternalWrench");
+      estimatedExternalWrench_centroid_ = datastore.get<sva::ForceVecd>(robot_.name() + "::estimatedExternalWrench");
     }
   }
 
@@ -180,9 +179,10 @@ void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & 
   int i = it->second;
   if(exportContactWrench_)
   {
-    if(datastore.has(robot_ + "::estimatedContactWrench_" + std::to_string(i)))
+    if(datastore.has(robot_.name() + "::estimatedContactWrench_" + std::to_string(i)))
     {
-      estimatedContactWrench_ = datastore.get<sva::ForceVecd>(robot_ + "::estimatedContactWrench_" + std::to_string(i));
+      estimatedContactWrench_ =
+          datastore.get<sva::ForceVecd>(robot_.name() + "::estimatedContactWrench_" + std::to_string(i));
       estimatedContactWrench_ = replaceForceTorque(estimatedContactWrench_);
     }
   }
@@ -202,9 +202,9 @@ sva::ForceVecd ObserverbasedAdmittanceTask::transformContactWrench(const sva::Fo
                                                                    const std::string surface,
                                                                    const std::string forceSensor)
 {
-  sva::PTransformd X_0_surface = robot().frame(surface).position();
+  sva::PTransformd X_0_surface = robot_.frame(surface).position();
 
-  sva::PTransformd X_0_ft = robot().forceSensor(forceSensor).X_0_f(robot());
+  sva::PTransformd X_0_ft = robot_.forceSensor(forceSensor).X_0_f(robot_);
 
   sva::PTransformd X_surface_ft = X_0_ft * X_0_surface.inv();
 

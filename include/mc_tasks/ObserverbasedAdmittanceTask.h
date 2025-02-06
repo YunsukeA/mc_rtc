@@ -247,7 +247,7 @@ protected:
   void addToSolver(mc_solver::QPSolver & solver) override;
 
 private:
-  std::string robot_;
+  mc_rbdyn::Robot & robot_;
   bool exportContactWrench_ = false;
   bool exportExternalWrench_ = false;
   int MaxContacts_ = 4;
