@@ -10,7 +10,7 @@
 /*
  * Move an environment robot pose according to another robot's surface
  */
-struct UpdateWall : mc_control::fsm::State
+struct Observerbased_UpdateWall : mc_control::fsm::State
 {
 
   void configure(const mc_rtc::Configuration & config) override;

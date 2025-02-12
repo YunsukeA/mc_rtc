@@ -121,20 +121,17 @@ void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
   mc_tasks::TransformTask::refAccel(T_0_s * (targetAccelW_ + deltaCompAccelW_)); // represented in the surface frame
   mc_tasks::TransformTask::refVelB(T_0_s * (targetVelW_ + deltaCompVelW_)); // represented in the surface frame
   mc_tasks::TransformTask::target(compliancePose()); // represented in the world frame
-
-  mc_rtc::log::info("this->robot().surfaceWrench(this->surface()): {}",
-                    this->robots.robot(rIndex).surfaceWrench(this->surface())); // for debug
 }
 
 void ObserverbasedImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
 {
+  mc_rtc::log::info("load function called!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"); // for debug
+
   if(config.has("gains")) { gains_ = config("gains"); }
   if(config.has("wrench")) { targetWrench(config("wrench")); }
   if(config.has("cutoffPeriod")) { cutoffPeriod(config("cutoffPeriod")); }
   TransformTask::load(solver, config);
-  // The TransformTask::load function above only sets
-  // the TrajectoryTaskGeneric's target, but not the compliance target, so we
-  // need to set it manually here.
+
   targetPose(TransformTask::target());
 
   robot_ = config("robot", robots.robot(rIndex).name());
@@ -168,7 +165,7 @@ void ObserverbasedImpedanceTask::getestimatedExternalWrench()
 void ObserverbasedImpedanceTask::getestimatedContactWrench(const std::string & surface)
 {
   static const std::map<std::string, int> surfaceMap = {
-      {"RightFoot", 0}, {"LeftFoot", 1}, {"RightHand", 2}, {"LeftHand", 3}};
+      {"RightFoot", 0}, {"LeftFoot", 1}, {"RightGripper", 2}, {"LeftGripper", 3}};
 
   auto it = surfaceMap.find(surface);
   if(it == surfaceMap.end())
@@ -200,17 +197,16 @@ sva::ForceVecd ObserverbasedImpedanceTask::replaceForceTorque(sva::ForceVecd tar
 
 void ObserverbasedImpedanceTask::addToLogger(mc_rtc::Logger & logger)
 {
-
   TransformTask::addToLogger(logger);
   std::string category = "ObserverbasedImpedanceTask_";
   std::string subcategory_est = "estimatedContactWrench_";
   std::string subcategory_force = "forcesensor_surfaceFrame";
   mc_rtc::log::info("ObserverbasedImpedanceTask::addToLogger!");
 
-  logger.addLogEntry("ObserverbasedImpedanceTask_estimatedContactWrench_surfaceFrame",
+  logger.addLogEntry(category + subcategory_est + "surfaceFrame",
                      [this]() { return estimatedContactWrench_; });
 
-  logger.addLogEntry("estimatedContactWrench_forcesensor_surfaceFrame",
+  logger.addLogEntry(subcategory_est + "forcesensor_" + "surfaceFrame",
                      [this]() { return this->robots.robot(rIndex).surfaceWrench(this->surface()); });
 }
 

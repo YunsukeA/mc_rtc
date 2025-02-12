@@ -107,14 +107,14 @@ public:
   /*! \brief Get the admittance coefficients of the task
    *
    */
-  const sva::ForceVecd & admittance() const { return admittance_; }
+  const sva::ForceVecd & Observerbasedadmittance() const { return Observerbasedadmittance_; }
 
   /*! \brief Set the admittance coefficients of the task
    *
    * \param admittance Vector of positive admittance coefficients
    *
    */
-  void admittance(const sva::ForceVecd & admittance) { admittance_ = admittance; }
+  void Observerbasedadmittance(const sva::ForceVecd & admittance) { Observerbasedadmittance_ = admittance; }
 
   /*! \brief Get the current pose of the control frame in the inertial frame */
   sva::PTransformd surfacePose() const { return frame_->position(); }
@@ -219,12 +219,15 @@ public:
                                         const std::string surface,
                                         const std::string forceSensor);
 
+  inline mc_rtc::DataStore & datastore() noexcept { return datastore_; }
+  const mc_rtc::DataStore & datastore() const noexcept { return datastore_; }
+
 protected:
   Eigen::Vector3d maxAngularVel_ = {0.1, 0.1, 0.1}; // [rad] / [s]
   Eigen::Vector3d maxLinearVel_ = {0.1, 0.1, 0.1}; // [m] / [s]
   double timestep_;
   double velFilterGain_ = 0.8; //< Gain for the low-pass filter on reference velocity [0..1]
-  sva::ForceVecd admittance_ = sva::ForceVecd(Eigen::Vector6d::Zero());
+  sva::ForceVecd Observerbasedadmittance_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   sva::ForceVecd targetWrench_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   sva::ForceVecd wrenchError_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   sva::MotionVecd feedforwardVelB_ = sva::MotionVecd(Eigen::Vector6d::Zero());
@@ -255,7 +258,7 @@ private:
 
   sva::ForceVecd estimatedExternalWrench_centroid_;
 
-  mc_rtc::DataStore datastore;
+  mc_rtc::DataStore datastore_;
 };
 
 } // namespace force

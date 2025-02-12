@@ -11,12 +11,12 @@ StepByStep: false
 IdleKeepState: true
 # Where to look for state libraries
 StatesLibraries:
-- "@MC_STATES_RUNTIME_DESTINATION_PREFIX@"
-- "@MC_Admittance_STATES_RUNTIME_DESTINATION_PREFIX@"
+  - "@MC_STATES_RUNTIME_DESTINATION_PREFIX@"
+  - "@MC_Admittance_STATES_RUNTIME_DESTINATION_PREFIX@"
 # Where to look for state files
 StatesFiles:
-- "@MC_STATES_RUNTIME_DESTINATION_PREFIX@/data"
-- "@MC_Admittance_STATES_RUNTIME_DESTINATION_PREFIX@/data"
+  - "@MC_STATES_RUNTIME_DESTINATION_PREFIX@/data"
+  - "@MC_Admittance_STATES_RUNTIME_DESTINATION_PREFIX@/data"
 
 # Additional robots to load
 robots:
@@ -31,33 +31,33 @@ robots:
       rotation: [0.0, -1.57, 0.0]
 # General constraints, always on
 constraints:
-- type: contact
-- type: dynamics
-  damper: [0.1, 0.01, 0.5]
-- type: compoundJoint
+  - type: contact
+  - type: dynamics
+    damper: [0.1, 0.01, 0.5]
+  - type: compoundJoint
 # Collision constraint
 collisions:
-- type: collision
-  useMinimal: true
-- type: collision
-  r1: jvrc1
-  r2: wall
-  collisions:
-    - body1: L_WRIST_Y_S
-      body2: ground
-      iDist: 0.5
-      sDist: 0.02
-      damping: 0.0
+  - type: collision
+    useMinimal: true
+  - type: collision
+    r1: jvrc1
+    r2: wall
+    collisions:
+      - body1: L_WRIST_Y_S
+        body2: ground
+        iDist: 0.5
+        sDist: 0.02
+        damping: 0.0
 # Initial set of contacts
 contacts:
-- r1: jvrc1
-  r1Surface: LeftFoot
-  r2: ground
-  r2Surface: AllGround
-- r1: jvrc1
-  r1Surface: RightFoot
-  r2: ground
-  r2Surface: AllGround
+  - r1: jvrc1
+    r1Surface: LeftFoot
+    r2: ground
+    r2Surface: AllGround
+  - r1: jvrc1
+    r1Surface: RightFoot
+    r2: ground
+    r2Surface: AllGround
 jvrc1:
   posture:
     stiffness: 1.0
@@ -91,7 +91,7 @@ states:
         weight: 1000
         stiffness: 50
         duration: 4
-        dimWeight: [1,1,1, 1, 0.5, 0.5]
+        dimWeight: [1, 1, 1, 1, 0.5, 0.5]
         displaySamples: 100
         target:
           translation: [0.45, -0.4, 1.1]
@@ -110,13 +110,13 @@ states:
         surface: RightGripper
         stiffness: [10, 10, 10, 10, 10, 1]
         damping: [6.3, 6.3, 6.3, 6.3, 6.3, 300]
-        admittance: [0,0,0,0,0,0.001]
+        admittance: [0, 0, 0, 0, 0, 0.001]
         maxVel:
           linear: [0.2, 0.2, 0.5]
           angular: [0.2, 0.2, 0.2]
         wrench:
-         force: [0, 0, -20]
-         couple: [0, 0, 0]
+          force: [0, 0, -20]
+          couple: [0, 0, 0]
         targetRotation: [1.57, 0, 1.57]
         completion:
           wrench:
@@ -136,12 +136,11 @@ states:
   # wall. We exploit this later for collision avoidance between the hand and the wall
   UpdateWallFromKinematics:
     base: Parallel
-    states: [RightHandPushAdmittance, UpdateWall]
+    states: [RightHandPushAdmittance, Observerbased_UpdateWall]
     configs:
       UpdateWall:
         body: R_LINDEX_S
         moveRobot: wall
-
 
   # Decrease applied force until we reach near zero force
   RightHandReleaseAdmittance:
@@ -149,8 +148,8 @@ states:
     tasks:
       RightHandAdmittance:
         wrench:
-         force: [0, 0, -1]
-         couple: [0, 0, 0]
+          force: [0, 0, -1]
+          couple: [0, 0, 0]
         completion:
           wrench:
             force: [.nan, .nan, -1]
@@ -169,11 +168,11 @@ states:
         surface: RightGripper
         moveWorld:
           translation: [-0.1, 0, 0]
-          rotation: [0,0,0]
+          rotation: [0, 0, 0]
         completion:
           AND:
-           - eval: 0.01
-           - speed: 0.01
+            - eval: 0.01
+            - speed: 0.01
     AddCollisionsAfter:
       - r1: jvrc1
         r2: wall
@@ -194,14 +193,13 @@ states:
         completion:
           eval: 0.01
 
-
 transitions:
-- [RightHandToWall,            OK, RightHandPushAdmittance, Auto]
-- [RightHandPushAdmittance,    OK, RightHandKeepAdmittance, Auto]
-- [RightHandKeepAdmittance,    OK, UpdateWallFromKinematics, Auto]
-- [UpdateWallFromKinematics,   OK, RightHandReleaseAdmittance, Auto]
-- [RightHandReleaseAdmittance, OK, RightHandMoveBack, Auto]
-- [RightHandMoveBack,          OK, StandingHalfSitting, Auto]
+  - [RightHandToWall, OK, RightHandPushAdmittance, Auto]
+  - [RightHandPushAdmittance, OK, RightHandKeepAdmittance, Auto]
+  - [RightHandKeepAdmittance, OK, UpdateWallFromKinematics, Auto]
+  - [UpdateWallFromKinematics, OK, RightHandReleaseAdmittance, Auto]
+  - [RightHandReleaseAdmittance, OK, RightHandMoveBack, Auto]
+  - [RightHandMoveBack, OK, StandingHalfSitting, Auto]
 
 # Initial state
 init: RightHandToWall

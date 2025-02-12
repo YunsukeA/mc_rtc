@@ -39,4 +39,4 @@ macro(add_fsm_state_simple state_name)
   )
 endmacro()
 
-add_fsm_state_simple(UpdateWall)
+add_fsm_state_simple(Observerbased_UpdateWall)

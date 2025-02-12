@@ -2,16 +2,16 @@
  * Copyright 2020 CNRS-UM LIRMM, CNRS-AIST JRL
  */
 
-#include "UpdateWall.h"
+#include "Observerbased_UpdateWall.h"
 #include <mc_control/fsm/Controller.h>
 #include <mc_rtc/ConfigurationHelpers.h>
 
-void UpdateWall::configure(const mc_rtc::Configuration & config)
+void Observerbased_UpdateWall::configure(const mc_rtc::Configuration & config)
 {
   config_.load(config);
 }
 
-void UpdateWall::start(mc_control::fsm::Controller & ctl)
+void Observerbased_UpdateWall::start(mc_control::fsm::Controller & ctl)
 {
   if(!config_.has("body")) { mc_rtc::log::error_and_throw("[{}] Missing required configuration for \"body\"", name()); }
   if(!config_.has("moveRobot"))
@@ -37,12 +37,12 @@ void UpdateWall::start(mc_control::fsm::Controller & ctl)
   ctl.robot(moveRobotName).posW(posW);
 }
 
-bool UpdateWall::run(mc_control::fsm::Controller &)
+bool Observerbased_UpdateWall::run(mc_control::fsm::Controller &)
 {
   output("OK");
   return true;
 }
 
-void UpdateWall::teardown(mc_control::fsm::Controller &) {}
+void Observerbased_UpdateWall::teardown(mc_control::fsm::Controller &) {}
 
-EXPORT_SINGLE_STATE("UpdateWall", UpdateWall)
+EXPORT_SINGLE_STATE("Observerbased_UpdateWall", Observerbased_UpdateWall)

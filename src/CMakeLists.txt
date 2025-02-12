@@ -502,7 +502,7 @@ set(mc_tasks_SRC
   mc_tasks/ExactCubicTrajectoryTask.cpp
   mc_tasks/ComplianceTask.cpp
   mc_tasks/AdmittanceTask.cpp
-  # mc_tasks/ObserverbasedAdmittanceTask.cpp
+  mc_tasks/ObserverbasedAdmittanceTask.cpp
   mc_tasks/ImpedanceTask.cpp
   mc_tasks/ObserverbasedImpedanceTask.cpp
   mc_tasks/FirstOrderImpedanceTask.cpp
@@ -541,7 +541,7 @@ set(mc_tasks_HDR
   ../include/mc_tasks/TrajectoryTaskGeneric.h
   ../include/mc_tasks/ComplianceTask.h
   ../include/mc_tasks/AdmittanceTask.h
-  # ../include/mc_tasks/ObserverbasedAdmittanceTask.h
+  ../include/mc_tasks/ObserverbasedAdmittanceTask.h
   ../include/mc_tasks/ImpedanceGains.h
   ../include/mc_tasks/ImpedanceTask.h
   ../include/mc_tasks/ObserverbasedImpedanceTask.h

@@ -182,6 +182,7 @@ void ImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc::Configurati
   // the TrajectoryTaskGeneric's target, but not the compliance target, so we
   // need to set it manually here.
   targetPose(TransformTask::target());
+  
 }
 
 void ImpedanceTask::addToSolver(mc_solver::QPSolver & solver)

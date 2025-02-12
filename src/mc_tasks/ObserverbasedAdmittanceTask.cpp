@@ -3,6 +3,7 @@
  */
 
 #include <mc_tasks/ObserverbasedAdmittanceTask.h>
+#include "mc_rtc/logging.h"
 
 namespace mc_tasks
 {
@@ -43,8 +44,8 @@ void ObserverbasedAdmittanceTask::update(mc_solver::QPSolver &)
   wrenchError_ = estimatedContactWrench_ - targetWrench_;
 
   // Compute linear and angular velocity based on wrench error and admittance
-  Eigen::Vector3d linearVel = admittance_.force().cwiseProduct(wrenchError_.force());
-  Eigen::Vector3d angularVel = admittance_.couple().cwiseProduct(wrenchError_.couple());
+  Eigen::Vector3d linearVel = Observerbasedadmittance_.force().cwiseProduct(wrenchError_.force());
+  Eigen::Vector3d angularVel = Observerbasedadmittance_.couple().cwiseProduct(wrenchError_.couple());
 
   // Clamp both values in order to have a 'security'
   clampInPlaceAndWarn(linearVel, (-maxLinearVel_).eval(), maxLinearVel_, name_ + " linear velocity");
@@ -69,7 +70,7 @@ void ObserverbasedAdmittanceTask::update(mc_solver::QPSolver &)
 void ObserverbasedAdmittanceTask::reset()
 {
   TransformTask::reset();
-  admittance_ = sva::ForceVecd(Eigen::Vector6d::Zero());
+  Observerbasedadmittance_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   feedforwardVelB_ = sva::MotionVecd(Eigen::Vector6d::Zero());
   targetWrench_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   wrenchError_ = sva::ForceVecd(Eigen::Vector6d::Zero());
@@ -81,7 +82,7 @@ void ObserverbasedAdmittanceTask::reset()
 /*! \brief Load parameters from a Configuration object */
 void ObserverbasedAdmittanceTask::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
 {
-  if(config.has("admittance")) { admittance(config("admittance")); }
+  if(config.has("Observerbasedadmittance")) { Observerbasedadmittance(config("Observerbasedadmittance")); }
   else if(config.has("targetPose"))
   {
     mc_rtc::log::warning("[{}] property \"targetPose\" is deprecated, use \"target\" instead", name());
@@ -106,14 +107,14 @@ void ObserverbasedAdmittanceTask::load(mc_solver::QPSolver & solver, const mc_rt
       exportValueConfig("exportExternalWrench", exportExternalWrench_);
     }
   }
-  mc_rtc::log::info("exportContactWrench_: {}", exportContactWrench_); // for debug
-  mc_rtc::log::info("exportExternalWrench_: {}", exportExternalWrench_); // for debug
+  // mc_rtc::log::info("exportContactWrench_: {}", exportContactWrench_); // for debug
+  // mc_rtc::log::info("exportExternalWrench_: {}", exportExternalWrench_); // for debug
 }
 
 void ObserverbasedAdmittanceTask::addToLogger(mc_rtc::Logger & logger)
 {
   TransformTask::addToLogger(logger);
-  MC_RTC_LOG_HELPER(name_ + "_admittance", admittance_);
+  MC_RTC_LOG_HELPER(name_ + "_Observerbasedadmittance", Observerbasedadmittance_);
   // MC_RTC_LOG_HELPER(name_ + "_measured_wrench", measuredWrench);
   MC_RTC_LOG_HELPER(name_ + "_estimatedContactWrench", estimatedContactWrench_);
   MC_RTC_LOG_HELPER(name_ + "_target_body_vel", feedforwardVelB_);
@@ -130,8 +131,9 @@ void ObserverbasedAdmittanceTask::addToGUI(mc_rtc::gui::StateBuilder & gui)
           [this](const sva::PTransformd & pos) { this->targetPose(pos); }),
       mc_rtc::gui::Transform("pos", [this]() { return frame_->position(); }),
       mc_rtc::gui::ArrayInput(
-          "admittance", {"cx", "cy", "cz", "fx", "fy", "fz"}, [this]() { return this->admittance().vector(); },
-          [this](const Eigen::Vector6d & a) { this->admittance(a); }),
+          "Observerbasedadmittance", {"cx", "cy", "cz", "fx", "fy", "fz"},
+          [this]() { return this->Observerbasedadmittance().vector(); },
+          [this](const Eigen::Vector6d & a) { this->Observerbasedadmittance(a); }),
       mc_rtc::gui::ArrayInput(
           "wrench", {"cx", "cy", "cz", "fx", "fy", "fz"}, [this]() { return this->targetWrench().vector(); },
           [this](const Eigen::Vector6d & a) { this->targetWrench(a); }),
@@ -155,9 +157,9 @@ void ObserverbasedAdmittanceTask::getestimatedExternalWrench()
 {
   if(exportExternalWrench_)
   {
-    if(datastore.has(robot_.name() + "::estimatedExternalWrench"))
+    if(datastore().has(robot_.name() + "::estimatedExternalWrench"))
     {
-      estimatedExternalWrench_centroid_ = datastore.get<sva::ForceVecd>(robot_.name() + "::estimatedExternalWrench");
+      estimatedExternalWrench_centroid_ = datastore().get<sva::ForceVecd>(robot_.name() + "::estimatedExternalWrench");
     }
   }
 
@@ -167,7 +169,7 @@ void ObserverbasedAdmittanceTask::getestimatedExternalWrench()
 void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & surface)
 {
   static const std::map<std::string, int> surfaceMap = {
-      {"RightFoot", 0}, {"LeftFoot", 1}, {"RightHand", 2}, {"LeftHand", 3}};
+      {"RightFoot", 0}, {"LeftFoot", 1}, {"RightGripper", 2}, {"LeftGripper", 3}};
 
   auto it = surfaceMap.find(surface);
   if(it == surfaceMap.end())
@@ -179,11 +181,20 @@ void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & 
   int i = it->second;
   if(exportContactWrench_)
   {
-    if(datastore.has(robot_.name() + "::estimatedContactWrench_" + std::to_string(i)))
+    if(datastore().has(robot_.name() + "::estimatedContactWrench_" + std::to_string(i)))
     {
       estimatedContactWrench_ =
-          datastore.get<sva::ForceVecd>(robot_.name() + "::estimatedContactWrench_" + std::to_string(i));
+          datastore().get<sva::ForceVecd>(robot_.name() + "::estimatedContactWrench_" + std::to_string(i));
       estimatedContactWrench_ = replaceForceTorque(estimatedContactWrench_);
+      mc_rtc::log::info("estimatedContactWrench_: {}", estimatedContactWrench_.vector());
+    }
+    else
+    {
+      mc_rtc::log::error("[ObserverbasedAdmittanceTask] {} is empty",
+                         robot_.name() + "::estimatedContactWrench_" + std::to_string(i));
+      mc_rtc::log::error("[ObserverbasedAdmittanceTask] The registered keys are below");
+      std::vector<std::string> keys = datastore().keys();
+      for(const std::string & key : keys) { std::cout << key << std::endl; }
     }
   }
   else { mc_rtc::log::error("[ObserverbasedAdmittanceTask] No EstimatedContactWrench is exported"); }
@@ -220,7 +231,7 @@ namespace
 {
 
 static auto registered = mc_tasks::MetaTaskLoader::register_load_function(
-    "admittance",
+    "Observerbasedadmittance",
     [](mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
     {
       auto frame = [&]() -> std::string
@@ -232,7 +243,7 @@ static auto registered = mc_tasks::MetaTaskLoader::register_load_function(
         }
         return config("frame");
       }();
-      auto rIndex = robotIndexFromConfig(config, solver.robots(), "admittance");
+      auto rIndex = robotIndexFromConfig(config, solver.robots(), "Observerbasedadmittance");
       auto t =
           std::make_shared<mc_tasks::force::ObserverbasedAdmittanceTask>(solver.robots().robot(rIndex).frame(frame));
       t->reset();
