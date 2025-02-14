@@ -53,15 +53,24 @@ void ObserverbasedAdmittanceTask::update(mc_solver::QPSolver &)
   // Clamp both values in order to have a 'security'
   clampInPlaceAndWarn(linearVel, (-maxLinearVel_).eval(), maxLinearVel_, name_ + " linear velocity");
   clampInPlaceAndWarn(angularVel, (-maxAngularVel_).eval(), maxAngularVel_, name_ + " angular velocity");
+  mc_rtc::log::info("linearVel:\n {}", linearVel); // for debug
+  mc_rtc::log::info("angularVel:\n {}", angularVel); // for debug
 
   // Filter
+  mc_rtc::log::info("refVelB_: {}", refVelB_); // for debug
   refVelB_ = velFilterGain_ * refVelB_ + (1 - velFilterGain_) * sva::MotionVecd(angularVel, linearVel);
+  mc_rtc::log::info("velFilterGain_: {}", velFilterGain_); // for debug
+  mc_rtc::log::info("sva::MotionVecd(angularVel, linearVel): {}", sva::MotionVecd(angularVel, linearVel)); // for debug
+  mc_rtc::log::info("new refVelB_: {}", refVelB_); // for debug
 
   // Compute position and rotation delta
   sva::PTransformd delta(mc_rbdyn::rpyToMat(timestep_ * refVelB_.angular()), timestep_ * refVelB_.linear());
+  mc_rtc::log::info("delta:\n {}", delta); // for debug
 
   // Acceleration
   TransformTask::refAccel((refVelB_ + feedforwardVelB_ - TransformTask::refVelB()) / timestep_);
+  mc_rtc::log::info("feedforwardVelB_: {}", feedforwardVelB_); // for debug
+  mc_rtc::log::info("TransformTask::refVelB(): {}", TransformTask::refVelB()); // for debug
 
   // Velocity
   TransformTask::refVelB(refVelB_ + feedforwardVelB_);
