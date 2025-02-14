@@ -106,7 +106,7 @@ states:
     base: StandingBase
     tasks:
       RightHandAdmittance:
-        type: admittance
+        type: Observerbasedadmittance
         surface: RightGripper
         stiffness: [10, 10, 10, 10, 10, 1]
         damping: [6.3, 6.3, 6.3, 6.3, 6.3, 300]

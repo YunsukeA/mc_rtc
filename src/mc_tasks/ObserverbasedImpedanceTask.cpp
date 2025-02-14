@@ -1,5 +1,6 @@
 #include <mc_tasks/MetaTaskLoader.h>
 #include <mc_tasks/ObserverbasedImpedanceTask.h>
+#include "mc_rtc/logging.h"
 
 namespace mc_tasks
 {
@@ -125,8 +126,6 @@ void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
 
 void ObserverbasedImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
 {
-  mc_rtc::log::info("load function called!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"); // for debug
-
   if(config.has("gains")) { gains_ = config("gains"); }
   if(config.has("wrench")) { targetWrench(config("wrench")); }
   if(config.has("cutoffPeriod")) { cutoffPeriod(config("cutoffPeriod")); }
@@ -181,6 +180,7 @@ void ObserverbasedImpedanceTask::getestimatedContactWrench(const std::string & s
     {
       estimatedContactWrench_ = datastore.get<sva::ForceVecd>(robot_ + "::estimatedContactWrench_" + std::to_string(i));
       estimatedContactWrench_ = replaceForceTorque(estimatedContactWrench_);
+      mc_rtc::log::info("{}", estimatedContactWrench_);
     }
   }
   else { mc_rtc::log::error("[ObserverbasedImpedanceTask] No EstimatedContactWrench is exported"); }
@@ -203,8 +203,7 @@ void ObserverbasedImpedanceTask::addToLogger(mc_rtc::Logger & logger)
   std::string subcategory_force = "forcesensor_surfaceFrame";
   mc_rtc::log::info("ObserverbasedImpedanceTask::addToLogger!");
 
-  logger.addLogEntry(category + subcategory_est + "surfaceFrame",
-                     [this]() { return estimatedContactWrench_; });
+  logger.addLogEntry(category + subcategory_est + "surfaceFrame", [this]() { return estimatedContactWrench_; });
 
   logger.addLogEntry(subcategory_est + "forcesensor_" + "surfaceFrame",
                      [this]() { return this->robots.robot(rIndex).surfaceWrench(this->surface()); });

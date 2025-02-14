@@ -192,9 +192,9 @@ void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & 
     {
       mc_rtc::log::error("[ObserverbasedAdmittanceTask] {} is empty",
                          robot_.name() + "::estimatedContactWrench_" + std::to_string(i));
-      mc_rtc::log::error("[ObserverbasedAdmittanceTask] The registered keys are below");
-      std::vector<std::string> keys = datastore().keys();
-      for(const std::string & key : keys) { std::cout << key << std::endl; }
+      // mc_rtc::log::error("[ObserverbasedAdmittanceTask] The registered keys are below");
+      // std::vector<std::string> keys = datastore().keys();
+      // for(const std::string & key : keys) { std::cout << key << std::endl; }
     }
   }
   else { mc_rtc::log::error("[ObserverbasedAdmittanceTask] No EstimatedContactWrench is exported"); }
