@@ -3,6 +3,7 @@
  */
 
 #include <mc_tasks/ObserverbasedAdmittanceTask.h>
+#include "mc_control/MCController.h"
 #include "mc_rtc/logging.h"
 
 namespace mc_tasks
@@ -15,17 +16,19 @@ using mc_filter::utils::clampInPlaceAndWarn;
 
 ObserverbasedAdmittanceTask::ObserverbasedAdmittanceTask(const std::string & surfaceName,
                                                          const mc_rbdyn::Robots & robots,
+                                                         mc_control::MCController * controller,
                                                          unsigned int robotIndex,
                                                          double stiffness,
                                                          double weight)
-: ObserverbasedAdmittanceTask(robots.robot(robotIndex).frame(surfaceName), stiffness, weight)
+: ObserverbasedAdmittanceTask(robots.robot(robotIndex).frame(surfaceName), controller, stiffness, weight)
 {
 }
 
 ObserverbasedAdmittanceTask::ObserverbasedAdmittanceTask(const mc_rbdyn::RobotFrame & frame,
+                                                         mc_control::MCController * controller,
                                                          double stiffness,
                                                          double weight)
-: TransformTask(frame, stiffness, weight), robot_(const_cast<mc_rbdyn::Robot &>(frame.robot()))
+: TransformTask(frame, stiffness, weight), robot_(const_cast<mc_rbdyn::Robot &>(frame.robot())), controller_(controller)
 {
   if(!frame.hasForceSensor())
   {
@@ -120,6 +123,7 @@ void ObserverbasedAdmittanceTask::addToLogger(mc_rtc::Logger & logger)
   MC_RTC_LOG_HELPER(name_ + "_target_body_vel", feedforwardVelB_);
   MC_RTC_LOG_HELPER(name_ + "_target_wrench", targetWrench_);
   MC_RTC_LOG_HELPER(name_ + "_vel_filter_gain", velFilterGain_);
+  MC_RTC_LOG_HELPER(name_ + "_wrenchError", wrenchError_);
 }
 
 void ObserverbasedAdmittanceTask::addToGUI(mc_rtc::gui::StateBuilder & gui)
@@ -157,9 +161,10 @@ void ObserverbasedAdmittanceTask::getestimatedExternalWrench()
 {
   if(exportExternalWrench_)
   {
-    if(datastore().has(robot_.name() + "::estimatedExternalWrench"))
+    if(controller_->datastore().has(robot_.name() + "::estimatedExternalWrench"))
     {
-      estimatedExternalWrench_centroid_ = datastore().get<sva::ForceVecd>(robot_.name() + "::estimatedExternalWrench");
+      estimatedExternalWrench_centroid_ =
+          controller_->datastore().get<sva::ForceVecd>(robot_.name() + "::estimatedExternalWrench");
     }
   }
 
@@ -181,20 +186,17 @@ void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & 
   int i = it->second;
   if(exportContactWrench_)
   {
-    if(datastore().has(robot_.name() + "::estimatedContactWrench_" + std::to_string(i)))
+    if(controller_->datastore().has(robot_.name() + "::estimatedContactWrench_" + std::to_string(i)))
     {
       estimatedContactWrench_ =
-          datastore().get<sva::ForceVecd>(robot_.name() + "::estimatedContactWrench_" + std::to_string(i));
+          controller_->datastore().get<sva::ForceVecd>(robot_.name() + "::estimatedContactWrench_" + std::to_string(i));
       estimatedContactWrench_ = replaceForceTorque(estimatedContactWrench_);
-      mc_rtc::log::info("estimatedContactWrench_: {}", estimatedContactWrench_.vector());
+      // mc_rtc::log::info("estimatedContactWrench_: {}", estimatedContactWrench_.vector());
     }
     else
     {
       mc_rtc::log::error("[ObserverbasedAdmittanceTask] {} is empty",
                          robot_.name() + "::estimatedContactWrench_" + std::to_string(i));
-      // mc_rtc::log::error("[ObserverbasedAdmittanceTask] The registered keys are below");
-      // std::vector<std::string> keys = datastore().keys();
-      // for(const std::string & key : keys) { std::cout << key << std::endl; }
     }
   }
   else { mc_rtc::log::error("[ObserverbasedAdmittanceTask] No EstimatedContactWrench is exported"); }
@@ -244,8 +246,9 @@ static auto registered = mc_tasks::MetaTaskLoader::register_load_function(
         return config("frame");
       }();
       auto rIndex = robotIndexFromConfig(config, solver.robots(), "Observerbasedadmittance");
-      auto t =
-          std::make_shared<mc_tasks::force::ObserverbasedAdmittanceTask>(solver.robots().robot(rIndex).frame(frame));
+      auto t = std::make_shared<mc_tasks::force::ObserverbasedAdmittanceTask>(
+          solver.robots().robot(rIndex).frame(frame), solver.controller(), config("stiffness", 5.0),
+          config("weight", 100.0));
       t->reset();
       t->load(solver, config);
       return t;
