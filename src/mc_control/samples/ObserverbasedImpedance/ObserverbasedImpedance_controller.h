@@ -9,6 +9,7 @@
 
 #include <mc_tasks/CoMTask.h>
 #include <mc_tasks/ObserverbasedImpedanceTask.h>
+#include "mc_control/MCController.h"
 // #include <mc_tasks/ImpedanceTask.h>
 
 namespace mc_control
@@ -28,12 +29,14 @@ protected:
 protected:
   double angle_ = 0.0;
   std::shared_ptr<mc_tasks::CoMTask> comTask_;
-  std::shared_ptr<mc_tasks::force::ObserverbasedImpedanceTask> impedanceTask_;
+  std::shared_ptr<mc_tasks::force::ObserverbasedImpedanceTask> ObserverbasedimpedanceTask_;
   // std::shared_ptr<mc_tasks::force::ImpedanceTask> impedanceTask_;
   double radius_ = 0.2;
   double speed_ = 0.5;
   Eigen::Vector3d center_ = Eigen::Vector3d(0.3, 0.5, 1.0);
   Eigen::Matrix3d orientation_ = Eigen::Matrix3d::Identity();
+
+  mc_control::MCController & ctl_;
 };
 
 } // namespace mc_control

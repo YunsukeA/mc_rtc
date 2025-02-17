@@ -12,7 +12,7 @@ namespace mc_control
 ObserverbasedImpedance::ObserverbasedImpedance(std::shared_ptr<mc_rbdyn::RobotModule> robot_module,
                                                double dt,
                                                Backend backend)
-: MCController(robot_module, dt, backend)
+: MCController(robot_module, dt, backend), ctl_(*this)
 {
   solver().addConstraintSet(contactConstraint);
   solver().addConstraintSet(kinematicsConstraint);
@@ -43,9 +43,10 @@ ObserverbasedImpedance::ObserverbasedImpedance(std::shared_ptr<mc_rbdyn::RobotMo
   Eigen::Vector3d posM = Eigen::Vector3d::Constant(1.0);
   Eigen::Vector3d posK = Eigen::Vector3d(100.0, 100.0, 1000.0);
   Eigen::Vector3d posD = Eigen::Vector3d(50.0, 50.0, 100.0);
-  impedanceTask_ = std::make_shared<mc_tasks::force::ObserverbasedImpedanceTask>("LeftGripper", robots(),
-                                                                                 robots().robotIndex(), 100.0);
-  auto & gains = impedanceTask_->gains();
+  ObserverbasedimpedanceTask_ = std::make_shared<mc_tasks::force::ObserverbasedImpedanceTask>(
+      "LeftGripper", robots(), &ctl_, robots().robotIndex(), 100.0);
+  ObserverbasedimpedanceTask_->load(solver(), config());
+  auto & gains = ObserverbasedimpedanceTask_->gains();
   gains.mass() = {100 * posM, posM};
   gains.damper() = {100 * posD, posD};
   gains.spring() = {100 * posK, posK};
@@ -66,10 +67,10 @@ void ObserverbasedImpedance::reset(const ControllerResetData & reset_data)
     addContact(Contact{robot().name(), env().name(), "RightFoot", "AllGround"});
   }
 
-  impedanceTask_->reset();
-  solver().addTask(impedanceTask_);
-  center_ = impedanceTask_->targetPose().translation() + Eigen::Vector3d{0.0, radius_, 0.0};
-  orientation_ = impedanceTask_->targetPose().rotation();
+  ObserverbasedimpedanceTask_->reset();
+  solver().addTask(ObserverbasedimpedanceTask_);
+  center_ = ObserverbasedimpedanceTask_->targetPose().translation() + Eigen::Vector3d{0.0, radius_, 0.0};
+  orientation_ = ObserverbasedimpedanceTask_->targetPose().rotation();
   angle_ = 3 * mc_rtc::constants::PI / 2.;
 
   // impedanceTask_->addToLogger(logger());
@@ -80,7 +81,7 @@ bool ObserverbasedImpedance::run()
 {
 
   // Track the circle trajectory
-  impedanceTask_->targetPose({orientation_, circleTrajectory(angle_)});
+  ObserverbasedimpedanceTask_->targetPose({orientation_, circleTrajectory(angle_)});
   angle_ += speed_ * solver().dt();
 
   return mc_control::MCController::run();
