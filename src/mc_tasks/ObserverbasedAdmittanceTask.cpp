@@ -4,6 +4,7 @@
 
 #include <mc_tasks/ObserverbasedAdmittanceTask.h>
 #include "mc_control/MCController.h"
+#include "mc_rtc/log/Logger.h"
 #include "mc_rtc/logging.h"
 
 namespace mc_tasks
@@ -43,20 +44,19 @@ void ObserverbasedAdmittanceTask::update(mc_solver::QPSolver &)
 {
   // Compute wrench error
   getestimatedContactWrench(surface());
-  estimatedContactWrench_ = transformContactWrench(estimatedContactWrench_, surface(), frame_->forceSensor().name());
+  getestimatedExternalWrench();
+  estimatedContactWrench_sensorFrame_ =
+      transformContactWrench(estimatedContactWrench_, surface(), frame_->forceSensor().name());
   wrenchError_ = estimatedContactWrench_ - targetWrench_;
+  estimationError_ = measuredWrench() - estimatedContactWrench_;
 
   // Compute linear and angular velocity based on wrench error and admittance
   Eigen::Vector3d linearVel = Observerbasedadmittance_.force().cwiseProduct(wrenchError_.force());
   Eigen::Vector3d angularVel = Observerbasedadmittance_.couple().cwiseProduct(wrenchError_.couple());
-  mc_rtc::log::info("linearVel_raw:\n {}", linearVel); // for debug
-  mc_rtc::log::info("angularVel_raw:\n {}", angularVel); // for debug
 
   // Clamp both values in order to have a 'security'
   clampInPlaceAndWarn(linearVel, (-maxLinearVel_).eval(), maxLinearVel_, name_ + " linear velocity");
   clampInPlaceAndWarn(angularVel, (-maxAngularVel_).eval(), maxAngularVel_, name_ + " angular velocity");
-  mc_rtc::log::info("linearVel_filtered:\n {}", linearVel); // for debug
-  mc_rtc::log::info("angularVel_filtered:\n {}", angularVel); // for debug
 
   // Filter
   refVelB_ = velFilterGain_ * refVelB_ + (1 - velFilterGain_) * sva::MotionVecd(angularVel, linearVel);
@@ -84,6 +84,7 @@ void ObserverbasedAdmittanceTask::reset()
 
   estimatedContactWrench_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   estimatedExternalWrench_centroid_ = sva::ForceVecd(Eigen::Vector6d::Zero());
+  estimationError_ = sva::ForceVecd(Eigen::Vector6d::Zero());
 }
 
 /*! \brief Load parameters from a Configuration object */
@@ -123,7 +124,10 @@ void ObserverbasedAdmittanceTask::addToLogger(mc_rtc::Logger & logger)
   TransformTask::addToLogger(logger);
   MC_RTC_LOG_HELPER(name_ + "_Observerbasedadmittance", Observerbasedadmittance_);
   // MC_RTC_LOG_HELPER(name_ + "_measured_wrench", measuredWrench);
-  MC_RTC_LOG_HELPER(name_ + "_estimatedContactWrench", estimatedContactWrench_);
+  MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ContactWrench_surfance", estimatedContactWrench_);
+  MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ContactWrench_sensorFrame", estimatedContactWrench_sensorFrame_);
+  MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ExternalWrench_centroid", estimatedExternalWrench_centroid_);
+  MC_RTC_LOG_HELPER(name_ + "_estimation" + "_estimationError", estimationError_);
   MC_RTC_LOG_HELPER(name_ + "_target_body_vel", feedforwardVelB_);
   MC_RTC_LOG_HELPER(name_ + "_target_wrench", targetWrench_);
   MC_RTC_LOG_HELPER(name_ + "_vel_filter_gain", velFilterGain_);

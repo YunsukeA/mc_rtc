@@ -256,6 +256,8 @@ private:
   bool exportExternalWrench_ = false;
   int MaxContacts_ = 4;
   sva::ForceVecd estimatedContactWrench_;
+  sva::ForceVecd estimatedContactWrench_sensorFrame_;
+  sva::ForceVecd estimationError_;
 
   sva::ForceVecd estimatedExternalWrench_centroid_;
   mc_control::MCController * controller_;
