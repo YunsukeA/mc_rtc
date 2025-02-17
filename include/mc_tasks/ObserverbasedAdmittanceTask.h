@@ -54,7 +54,7 @@ namespace force
  * [4] https://gite.lirmm.fr/multi-contact/mc_rtc/issues/34
  *
  */
-struct MC_TASKS_DLLAPI ObserverbasedAdmittanceTask : TransformTask
+class ObserverbasedAdmittanceTask : public TransformTask
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -70,7 +70,10 @@ public:
    * \throws If the frame does not have a force sensor attached
    *
    */
-  ObserverbasedAdmittanceTask(const mc_rbdyn::RobotFrame & frame, double stiffness = 5.0, double weight = 1000.0);
+  ObserverbasedAdmittanceTask(const mc_rbdyn::RobotFrame & frame,
+                              mc_control::MCController * controller,
+                              double stiffness = 5.0,
+                              double weight = 1000.0);
 
   /*! \brief Initialize a new admittance task.
    *
@@ -91,6 +94,7 @@ public:
    */
   ObserverbasedAdmittanceTask(const std::string & robotSurface,
                               const mc_rbdyn::Robots & robots,
+                              mc_control::MCController * controller,
                               unsigned robotIndex,
                               double stiffness = 5.0,
                               double weight = 1000.0);
@@ -219,9 +223,6 @@ public:
                                         const std::string surface,
                                         const std::string forceSensor);
 
-  inline mc_rtc::DataStore & datastore() noexcept { return datastore_; }
-  const mc_rtc::DataStore & datastore() const noexcept { return datastore_; }
-
 protected:
   Eigen::Vector3d maxAngularVel_ = {0.1, 0.1, 0.1}; // [rad] / [s]
   Eigen::Vector3d maxLinearVel_ = {0.1, 0.1, 0.1}; // [m] / [s]
@@ -255,10 +256,11 @@ private:
   bool exportExternalWrench_ = false;
   int MaxContacts_ = 4;
   sva::ForceVecd estimatedContactWrench_;
+  sva::ForceVecd estimatedContactWrench_sensorFrame_;
+  sva::ForceVecd estimationError_;
 
   sva::ForceVecd estimatedExternalWrench_centroid_;
-
-  mc_rtc::DataStore datastore_;
+  mc_control::MCController * controller_;
 };
 
 } // namespace force

@@ -110,7 +110,7 @@ states:
         surface: RightGripper
         stiffness: [10, 10, 10, 10, 10, 1]
         damping: [6.3, 6.3, 6.3, 6.3, 6.3, 300]
-        admittance: [0, 0, 0, 0, 0, 0.001]
+        Observerbasedadmittance: [0, 0, 0, 0, 0, 0.001]
         maxVel:
           linear: [0.2, 0.2, 0.5]
           angular: [0.2, 0.2, 0.2]
