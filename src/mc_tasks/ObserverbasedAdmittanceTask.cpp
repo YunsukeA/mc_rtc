@@ -45,11 +45,19 @@ void ObserverbasedAdmittanceTask::update(mc_solver::QPSolver &)
   // Compute wrench error
   getestimatedContactWrench(surface());
   getestimatedExternalWrench();
-  estimatedContactWrench_sensorFrame_ =
-      transformContactWrench(estimatedContactWrench_, surface(), frame_->forceSensor().name());
-  wrenchError_ = estimatedContactWrench_ - targetWrench_;
-  estimationError_ = measuredWrench() - estimatedContactWrench_;
+  estimatedExternalWrench_surfaceFrame_ = transformExternalWrench(estimatedExternalWrench_centroid_, surface());
 
+  if(usingWrench_ == "Contact")
+  {
+    wrenchError_ = estimatedContactWrench_ - targetWrench_;
+    estimationError_ = measuredWrench() - estimatedContactWrench_;
+  }
+  else if(usingWrench_ == "External")
+  {
+    wrenchError_ = estimatedExternalWrench_surfaceFrame_ - targetWrench_;
+    estimationError_ = measuredWrench() - estimatedExternalWrench_surfaceFrame_;
+  }
+  else { wrenchError_ = measuredWrench() - targetWrench_; }
   // Compute linear and angular velocity based on wrench error and admittance
   Eigen::Vector3d linearVel = Observerbasedadmittance_.force().cwiseProduct(wrenchError_.force());
   Eigen::Vector3d angularVel = Observerbasedadmittance_.couple().cwiseProduct(wrenchError_.couple());
@@ -84,6 +92,7 @@ void ObserverbasedAdmittanceTask::reset()
 
   estimatedContactWrench_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   estimatedExternalWrench_centroid_ = sva::ForceVecd(Eigen::Vector6d::Zero());
+  estimatedExternalWrench_surfaceFrame_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   estimationError_ = sva::ForceVecd(Eigen::Vector6d::Zero());
 }
 
@@ -114,6 +123,11 @@ void ObserverbasedAdmittanceTask::load(mc_solver::QPSolver & solver, const mc_rt
     {
       exportValueConfig("exportExternalWrench", exportExternalWrench_);
     }
+    if(exportValueConfig.has("usingWrench"))
+    {
+      exportValueConfig("usingWrench", usingWrench_);
+      mc_rtc::log::info("usingWrench_: {}", usingWrench_);
+    }
   }
   // mc_rtc::log::info("exportContactWrench_: {}", exportContactWrench_); // for debug
   // mc_rtc::log::info("exportExternalWrench_: {}", exportExternalWrench_); // for debug
@@ -125,8 +139,9 @@ void ObserverbasedAdmittanceTask::addToLogger(mc_rtc::Logger & logger)
   MC_RTC_LOG_HELPER(name_ + "_Observerbasedadmittance", Observerbasedadmittance_);
   // MC_RTC_LOG_HELPER(name_ + "_measured_wrench", measuredWrench);
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ContactWrench_surfance", estimatedContactWrench_);
-  MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ContactWrench_sensorFrame", estimatedContactWrench_sensorFrame_);
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ExternalWrench_centroid", estimatedExternalWrench_centroid_);
+  MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ExternalWrench_surfaceFrame", estimatedExternalWrench_surfaceFrame_);
+
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_estimationError", estimationError_);
   MC_RTC_LOG_HELPER(name_ + "_target_body_vel", feedforwardVelB_);
   MC_RTC_LOG_HELPER(name_ + "_target_wrench", targetWrench_);
@@ -173,6 +188,7 @@ void ObserverbasedAdmittanceTask::getestimatedExternalWrench()
     {
       estimatedExternalWrench_centroid_ =
           controller_->datastore().get<sva::ForceVecd>(robot_.name() + "::estimatedExternalWrench");
+      estimatedExternalWrench_centroid_ = replaceForceTorque(estimatedExternalWrench_centroid_);
     }
   }
 
@@ -182,7 +198,7 @@ void ObserverbasedAdmittanceTask::getestimatedExternalWrench()
 void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & surface)
 {
   static const std::map<std::string, int> surfaceMap = {
-      {"RightFoot", 0}, {"LeftFoot", 1}, {"RightGripper", 2}, {"LeftGripper", 3}};
+      {"RightFoot", 0}, {"LeftFoot", 1}, {"RightHand", 2}, {"LeftHand", 3}};
 
   auto it = surfaceMap.find(surface);
   if(it == surfaceMap.end())
@@ -233,6 +249,21 @@ sva::ForceVecd ObserverbasedAdmittanceTask::transformContactWrench(const sva::Fo
 
   return wrench_out;
 }
+
+sva::ForceVecd ObserverbasedAdmittanceTask::transformExternalWrench(const sva::ForceVecd wrench,
+                                                                    const std::string surface)
+{
+  sva::PTransformd X_0_surface = robot_.frame(surface).position();
+
+  sva::PTransformd X_0_com = robot_.frame("Body").position();
+
+  sva::PTransformd X_surface_com = X_0_com * X_0_surface.inv();
+
+  sva::ForceVecd wrench_out = X_surface_com.dualMul(wrench);
+
+  return wrench_out;
+}
+
 } // namespace force
 
 } // namespace mc_tasks

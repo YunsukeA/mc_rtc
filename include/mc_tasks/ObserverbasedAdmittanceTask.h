@@ -153,7 +153,7 @@ public:
   void targetWrench(const sva::ForceVecd & wrench) { targetWrench_ = wrench; }
 
   /*! \brief Get the measured wrench in the control frame */
-  sva::ForceVecd measuredWrench() const { return frame_->wrench(); }
+  sva::ForceVecd measuredWrench() const { return frame_->wrench(); } // wrench on surface frame
 
   sva::ForceVecd estimatedContactWrench() const { return estimatedContactWrench_; }
 
@@ -222,6 +222,7 @@ public:
   sva::ForceVecd transformContactWrench(const sva::ForceVecd wrench,
                                         const std::string surface,
                                         const std::string forceSensor);
+  sva::ForceVecd transformExternalWrench(const sva::ForceVecd wrench, const std::string surface);
 
 protected:
   Eigen::Vector3d maxAngularVel_ = {0.1, 0.1, 0.1}; // [rad] / [s]
@@ -254,12 +255,15 @@ private:
   mc_rbdyn::Robot & robot_;
   bool exportContactWrench_ = false;
   bool exportExternalWrench_ = false;
+  std::string usingWrench_;
+
   int MaxContacts_ = 4;
   sva::ForceVecd estimatedContactWrench_;
   sva::ForceVecd estimatedContactWrench_sensorFrame_;
   sva::ForceVecd estimationError_;
 
   sva::ForceVecd estimatedExternalWrench_centroid_;
+  sva::ForceVecd estimatedExternalWrench_surfaceFrame_;
   mc_control::MCController * controller_;
 };
 
