@@ -3,9 +3,6 @@
  */
 
 #include <mc_tasks/ObserverbasedAdmittanceTask.h>
-#include "mc_control/MCController.h"
-#include "mc_rtc/log/Logger.h"
-#include "mc_rtc/logging.h"
 
 namespace mc_tasks
 {
@@ -147,6 +144,7 @@ void ObserverbasedAdmittanceTask::addToLogger(mc_rtc::Logger & logger)
   MC_RTC_LOG_HELPER(name_ + "_target_wrench", targetWrench_);
   MC_RTC_LOG_HELPER(name_ + "_vel_filter_gain", velFilterGain_);
   MC_RTC_LOG_HELPER(name_ + "_wrenchError", wrenchError_);
+  MC_RTC_LOG_HELPER(name_ + "_RightHandForceSensor" + "_surfaceFrame", measuredWrench);
 }
 
 void ObserverbasedAdmittanceTask::addToGUI(mc_rtc::gui::StateBuilder & gui)

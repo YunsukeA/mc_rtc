@@ -7,6 +7,7 @@
 #include <mc_control/api.h>
 #include <mc_control/fsm/Controller.h>
 #include <mc_control/mc_controller.h>
+#include <mc_tasks/lipm_stabilizer/StabilizerTask.h>
 
 struct MC_CONTROL_DLLAPI ObserverbasedAdmittanceSampleController : public mc_control::fsm::Controller
 {

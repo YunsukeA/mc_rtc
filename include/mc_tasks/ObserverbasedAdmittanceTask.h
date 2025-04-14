@@ -26,6 +26,9 @@
 #include <mc_control/mc_controller.h>
 #include <mc_rtc/DataStore.h>
 #include <mc_rtc/log/Logger.h>
+#include "mc_rtc/logging.h"
+
+#include <state-observation/dynamics-estimators/kinetics-observer.hpp>
 
 namespace mc_tasks
 {
@@ -265,6 +268,8 @@ private:
   sva::ForceVecd estimatedExternalWrench_centroid_;
   sva::ForceVecd estimatedExternalWrench_surfaceFrame_;
   mc_control::MCController * controller_;
+
+  stateObservation::KineticsObserver kineticsObserver_;
 };
 
 } // namespace force
