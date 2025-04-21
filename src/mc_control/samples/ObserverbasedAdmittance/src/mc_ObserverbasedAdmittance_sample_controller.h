@@ -23,4 +23,7 @@ struct MC_CONTROL_DLLAPI ObserverbasedAdmittanceSampleController : public mc_con
 
 protected:
   double t_ = 0; ///< Elapsed time since the controller started
+
+private:
+  std::shared_ptr<mc_tasks::lipm_stabilizer::StabilizerTask> lipm_stabilizer_ptr_;
 };

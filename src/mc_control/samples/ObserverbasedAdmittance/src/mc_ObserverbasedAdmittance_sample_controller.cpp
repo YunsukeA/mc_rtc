@@ -3,6 +3,7 @@
  */
 
 #include "mc_ObserverbasedAdmittance_sample_controller.h"
+#include <SpaceVecAlg/SpaceVecAlg>
 #include "mc_control/MCController.h"
 #include <Eigen/src/Core/Matrix.h>
 
@@ -23,13 +24,15 @@ ObserverbasedAdmittanceSampleController::ObserverbasedAdmittanceSampleController
   mc_rtc::log::info("LIPM Stabilizer Configuration: {}", stabiConf.rightFootSurface);
   mc_rtc::log::info("LIPM Stabilizer Configuration: {}", stabiConf.comHeight);
 
-  auto lipm_stabilizer_ptr = std::make_shared<mc_tasks::lipm_stabilizer::StabilizerTask>(
+  lipm_stabilizer_ptr_ = std::make_shared<mc_tasks::lipm_stabilizer::StabilizerTask>(
       solver().robots(), solver().realRobots(), robots().robotIndex(), stabiConf.leftFootSurface,
       stabiConf.rightFootSurface, stabiConf.torsoBodyName, solver().dt());
-  lipm_stabilizer_ptr->reset();
-  lipm_stabilizer_ptr->setContacts(
+  lipm_stabilizer_ptr_->reset();
+  lipm_stabilizer_ptr_->setContacts(
       {mc_tasks::lipm_stabilizer::ContactState::Left, mc_tasks::lipm_stabilizer::ContactState::Right});
-  solver().addTask(lipm_stabilizer_ptr);
+
+  lipm_stabilizer_ptr_->configure(stabiConf);
+  solver().addTask(lipm_stabilizer_ptr_);
 }
 
 void ObserverbasedAdmittanceSampleController::reset(const mc_control::ControllerResetData & reset_data)
@@ -37,6 +40,9 @@ void ObserverbasedAdmittanceSampleController::reset(const mc_control::Controller
   Controller::reset(reset_data);
   auto handForceConfig = mc_rtc::gui::ForceConfig(mc_rtc::gui::Color(0., 1., 0.));
   handForceConfig.force_scale *= 10;
+
+  lipm_stabilizer_ptr_.reset();
+
   gui()->addElement({"Forces"},
                     mc_rtc::gui::Force(
                         "RightHand", handForceConfig, [this]() { return robot().surfaceWrench("RightHand"); },
@@ -62,19 +68,6 @@ void ObserverbasedAdmittanceSampleController::reset(const mc_control::Controller
 bool ObserverbasedAdmittanceSampleController::run()
 {
   t_ += timeStep;
-
-  mc_tasks::lipm_stabilizer::StabilizerTask stabilizerTask(solver().robots(), solver().realRobots(),
-                                                           robots().robotIndex(), solver().dt());
-  mc_tasks::lipm_stabilizer::StabilizerTask & stabilizer = stabilizerTask;
-
-  datastore().make_call("KinematicAnchorFrame" + robot().name(),
-                        [this](const mc_rbdyn::Robot & robot)
-                        {
-                          return sva::interpolate(robot.surfacePose("RightFootCenter"),
-                                                  robot.surfacePose("LeftFootCenter"), leftFootRatio_);
-                        });
-
-  datastore().make_call("AnchorFrameReal", [&]() { return stabilizer.anchorFrame(solver().realRobot()); });
 
   return Controller::run();
 }
