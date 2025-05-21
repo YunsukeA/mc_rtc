@@ -19,11 +19,6 @@ ObserverbasedAdmittanceSampleController::ObserverbasedAdmittanceSampleController
 
   auto stabiConf = robot().module().defaultLIPMStabilizerConfiguration();
 
-  mc_rtc::log::info("LIPM Stabilizer Configuration: {}", stabiConf.torsoBodyName);
-  mc_rtc::log::info("LIPM Stabilizer Configuration: {}", stabiConf.leftFootSurface);
-  mc_rtc::log::info("LIPM Stabilizer Configuration: {}", stabiConf.rightFootSurface);
-  mc_rtc::log::info("LIPM Stabilizer Configuration: {}", stabiConf.comHeight);
-
   lipm_stabilizer_ptr_ = std::make_shared<mc_tasks::lipm_stabilizer::StabilizerTask>(
       solver().robots(), solver().realRobots(), robots().robotIndex(), stabiConf.leftFootSurface,
       stabiConf.rightFootSurface, stabiConf.torsoBodyName, solver().dt());
@@ -47,22 +42,6 @@ void ObserverbasedAdmittanceSampleController::reset(const mc_control::Controller
                     mc_rtc::gui::Force(
                         "RightHand", handForceConfig, [this]() { return robot().surfaceWrench("RightHand"); },
                         [this]() { return robot().surfacePose("RightHand"); }));
-
-  using Color = mc_rtc::gui::Color;
-
-  gui()->addPlot(
-      "RightFoot Force (t)", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-      mc_rtc::gui::plot::Y("RF(x)", [this]() { return robot().surfaceWrench("RightFoot").force().x(); }, Color::Red));
-  gui()->addPlot(
-      "RightFoot Force (t)", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-      mc_rtc::gui::plot::Y("RZ(y)", [this]() { return robot().surfaceWrench("RightFoot").force().z(); }, Color::Blue));
-
-  gui()->addPlot(
-      "LeftFoot Force (t)", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-      mc_rtc::gui::plot::Y("LF(x)", [this]() { return robot().surfaceWrench("LeftFoot").force().x(); }, Color::Green));
-  gui()->addPlot(
-      "LeftFoot Force (t)", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-      mc_rtc::gui::plot::Y("LF(z)", [this]() { return robot().surfaceWrench("LeftFoot").force().z(); }, Color::Yellow));
 }
 
 bool ObserverbasedAdmittanceSampleController::run()
