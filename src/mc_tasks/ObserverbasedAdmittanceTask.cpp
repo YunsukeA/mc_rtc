@@ -92,6 +92,7 @@ void ObserverbasedAdmittanceTask::reset()
   estimatedExternalWrench_centroid_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   estimatedExternalWrench_surfaceFrame_ = sva::ForceVecd(Eigen::Vector6d::Zero());
   estimationError_ = sva::ForceVecd(Eigen::Vector6d::Zero());
+  worldCentroidKinePTrans_ = sva::PTransformd::Identity();
 }
 
 /*! \brief Load parameters from a Configuration object */
@@ -139,7 +140,7 @@ void ObserverbasedAdmittanceTask::addToLogger(mc_rtc::Logger & logger)
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ContactWrench_surfance", estimatedContactWrench_);
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ExternalWrench_centroid", estimatedExternalWrench_centroid_);
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ExternalWrench_surfaceFrame", estimatedExternalWrench_surfaceFrame_);
-  MC_RTC_LOG_HELPER(name_ + "_estimation" + "centroidFramePtransformd", worldCentroidKinePTrans_);
+  MC_RTC_LOG_HELPER(name_ + "_estimation" + "_centroidFrame_Ptransformd", worldCentroidKinePTrans_);
 
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_estimationError", estimationError_);
   MC_RTC_LOG_HELPER(name_ + "_target_body_vel", feedforwardVelB_);
@@ -232,7 +233,6 @@ void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & 
   }
   else { mc_rtc::log::error("[ObserverbasedAdmittanceTask] No EstimatedContactWrench is exported"); }
 }
-
 sva::ForceVecd ObserverbasedAdmittanceTask::replaceForceTorque(sva::ForceVecd target)
 {
   sva::ForceVecd tmp = sva::ForceVecd::Zero();
@@ -241,7 +241,6 @@ sva::ForceVecd ObserverbasedAdmittanceTask::replaceForceTorque(sva::ForceVecd ta
 
   return tmp;
 }
-
 sva::ForceVecd ObserverbasedAdmittanceTask::transformContactWrench(const sva::ForceVecd wrench,
                                                                    const std::string surface,
                                                                    const std::string forceSensor)
@@ -262,9 +261,9 @@ sva::ForceVecd ObserverbasedAdmittanceTask::transformExternalWrench(const sva::F
 {
   sva::PTransformd X_0_surface = robot_.frame(surface).position();
 
-  sva::PTransformd X_0_com = robot_.frame("Body").position();
+  sva::PTransformd X_0_centroid = worldCentroidKinePTrans_;
 
-  sva::PTransformd X_surface_com = X_0_com * X_0_surface.inv();
+  sva::PTransformd X_surface_com = X_0_centroid * X_0_surface.inv();
 
   sva::ForceVecd wrench_out = X_surface_com.dualMul(wrench);
 
