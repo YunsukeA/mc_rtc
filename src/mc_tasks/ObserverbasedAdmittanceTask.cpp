@@ -3,6 +3,7 @@
  */
 
 #include <mc_tasks/ObserverbasedAdmittanceTask.h>
+#include "mc_rtc/log/Logger.h"
 
 namespace mc_tasks
 {
@@ -138,6 +139,7 @@ void ObserverbasedAdmittanceTask::addToLogger(mc_rtc::Logger & logger)
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ContactWrench_surfance", estimatedContactWrench_);
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ExternalWrench_centroid", estimatedExternalWrench_centroid_);
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_ExternalWrench_surfaceFrame", estimatedExternalWrench_surfaceFrame_);
+  MC_RTC_LOG_HELPER(name_ + "_estimation" + "centroidFramePtransformd", worldCentroidKinePTrans_);
 
   MC_RTC_LOG_HELPER(name_ + "_estimation" + "_estimationError", estimationError_);
   MC_RTC_LOG_HELPER(name_ + "_target_body_vel", feedforwardVelB_);
@@ -182,11 +184,18 @@ void ObserverbasedAdmittanceTask::getestimatedExternalWrench()
 {
   if(exportExternalWrench_)
   {
-    if(controller_->datastore().has(robot_.name() + "::estimatedExternalWrench"))
+    if(controller_->datastore().has(robot_.name() + "::estimatedExternalWrench_Force")
+       && controller_->datastore().has(robot_.name() + "::estimatedExternalWrench_Torque"))
     {
-      estimatedExternalWrench_centroid_ =
-          controller_->datastore().get<sva::ForceVecd>(robot_.name() + "::estimatedExternalWrench");
-      estimatedExternalWrench_centroid_ = replaceForceTorque(estimatedExternalWrench_centroid_);
+      estimatedExternalWrench_centroid_.force() =
+          controller_->datastore().get<Eigen::Vector3d>(robot_.name() + "::estimatedExternalWrench_Force");
+      estimatedExternalWrench_centroid_.couple() =
+          controller_->datastore().get<Eigen::Vector3d>(robot_.name() + "::estimatedExternalWrench_Torque");
+    }
+    if(controller_->datastore().has(robot_.name() + "::worldCentroidKinePTrans"))
+    {
+      worldCentroidKinePTrans_ =
+          controller_->datastore().get<sva::PTransformd>(robot_.name() + "::worldCentroidKinePTrans");
     }
   }
 

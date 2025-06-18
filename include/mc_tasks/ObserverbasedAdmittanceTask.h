@@ -269,6 +269,8 @@ private:
   sva::ForceVecd estimatedExternalWrench_surfaceFrame_;
   mc_control::MCController * controller_;
 
+  sva::PTransformd worldCentroidKinePTrans_;
+
   stateObservation::KineticsObserver kineticsObserver_;
 };
 
