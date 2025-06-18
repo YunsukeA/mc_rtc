@@ -259,11 +259,11 @@ sva::ForceVecd ObserverbasedAdmittanceTask::transformContactWrench(const sva::Fo
 sva::ForceVecd ObserverbasedAdmittanceTask::transformExternalWrench(const sva::ForceVecd wrench,
                                                                     const std::string surface)
 {
-  sva::PTransformd X_0_surface = robot_.frame(surface).position();
+  sva::PTransformd X_0_surface = robot_.frame(surface).position(); // ^surface X_0
 
-  sva::PTransformd X_0_centroid = worldCentroidKinePTrans_;
+  sva::PTransformd X_0_centroid = worldCentroidKinePTrans_; // ^controid X_0
 
-  sva::PTransformd X_surface_com = X_0_centroid * X_0_surface.inv();
+  sva::PTransformd X_surface_com = X_0_surface * X_0_centroid.inv();
 
   sva::ForceVecd wrench_out = X_surface_com.dualMul(wrench);
 
