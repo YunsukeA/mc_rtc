@@ -233,6 +233,7 @@ void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & 
   }
   else { mc_rtc::log::error("[ObserverbasedAdmittanceTask] No EstimatedContactWrench is exported"); }
 }
+
 sva::ForceVecd ObserverbasedAdmittanceTask::replaceForceTorque(sva::ForceVecd target)
 {
   sva::ForceVecd tmp = sva::ForceVecd::Zero();
@@ -241,6 +242,7 @@ sva::ForceVecd ObserverbasedAdmittanceTask::replaceForceTorque(sva::ForceVecd ta
 
   return tmp;
 }
+
 sva::ForceVecd ObserverbasedAdmittanceTask::transformContactWrench(const sva::ForceVecd wrench,
                                                                    const std::string surface,
                                                                    const std::string forceSensor)

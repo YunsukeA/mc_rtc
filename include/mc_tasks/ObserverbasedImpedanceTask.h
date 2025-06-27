@@ -40,12 +40,17 @@ public:
   sva::ForceVecd transformContactWrench(const sva::ForceVecd wrench,
                                         const std::string surface,
                                         const std::string forceSensor);
+  sva::ForceVecd transformExternalWrench(const sva::ForceVecd wrench, const std::string surface);
+
+protected:
+  sva::ForceVecd wrenchError_ = sva::ForceVecd(Eigen::Vector6d::Zero());
 
 private:
   std::string robot_;
   bool exportContactWrench_ = true;
   bool exportExternalWrench_ = true;
   int MaxContacts_ = 4;
+  std::string usingWrench_;
 
   sva::ForceVecd estimatedContactWrench_;
   sva::ForceVecd estimatedContactWrench_sensorFrame_;
@@ -54,6 +59,8 @@ private:
   mc_control::MCController * controller_;
 
   sva::ForceVecd estimationError_;
+
+  sva::PTransformd worldCentroidKinePTrans_;
 };
 
 } // namespace force

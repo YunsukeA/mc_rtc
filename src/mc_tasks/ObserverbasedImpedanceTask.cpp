@@ -25,20 +25,32 @@ ObserverbasedImpedanceTask::ObserverbasedImpedanceTask(const mc_rbdyn::RobotFram
 : ImpedanceTask(frame, stiffness, weight), controller_(controller)
 {
   type_ = "ObserverbasedImpedanceTask";
-  name_ = "observerbased_impedance_" + robots.robot(rIndex).name() + "_" + frame.name();
+  name_ = "ObserverbasedImpedance_" + robots.robot(rIndex).name() + "_" + frame.name();
   mc_rtc::log::info("[ObserverbasedImpedanceTask] Initialized!");
 }
 
 void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
 {
   double dt = solver.dt();
-
   // 1. Filter the estimated wrench
   getestimatedContactWrench(surface());
-  estimatedContactWrench_sensorFrame_ =
-      transformContactWrench(estimatedContactWrench_, surface(), frame_->forceSensor().name());
+  getestimatedExternalWrench();
 
-  estimationError_ = measuredWrench() - estimatedContactWrench_;
+  // choose the wrench to use
+  if(usingWrench_ == "Contact")
+  {
+    measuredWrench_ = transformContactWrench(estimatedContactWrench_, surface(), frame_->forceSensor().name());
+    wrenchError_ = estimatedContactWrench_ - targetWrench_;
+    estimationError_ = measuredWrench() - estimatedContactWrench_;
+  }
+  else if(usingWrench_ == "External")
+  {
+    measuredWrench_ = transformExternalWrench(estimatedExternalWrench_centroid_, surface());
+    wrenchError_ = measuredWrench_ - targetWrench_;
+    estimationError_ = measuredWrench() - measuredWrench_;
+  }
+  else { measuredWrench_ = frame_->wrench(); }
+
   lowPass_.update(estimatedContactWrench_);
   filteredMeasuredWrench_ = lowPass_.eval();
 
@@ -150,6 +162,11 @@ void ObserverbasedImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc
     {
       exportValueConfig("exportExternalWrench", exportExternalWrench_);
     }
+    if(exportValueConfig.has("usingWrench"))
+    {
+      exportValueConfig("usingWrench", usingWrench_);
+      mc_rtc::log::info("[ObserverbasedImpedance] usingWrench_: {}", usingWrench_);
+    }
   }
 }
 
@@ -157,13 +174,19 @@ void ObserverbasedImpedanceTask::getestimatedExternalWrench()
 {
   if(exportExternalWrench_)
   {
-    if(controller_->datastore().has(robot_ + "::estimatedExternalWrench"))
+    if(controller_->datastore().has(robot_ + "::estimatedExternalWrench_Force")
+       && controller_->datastore().has(robot_ + "::estimatedExternalWrench_Torque"))
     {
-      estimatedExternalWrench_centroid_ =
-          controller_->datastore().get<sva::ForceVecd>(robot_ + "::estimatedExternalWrench");
+      estimatedExternalWrench_centroid_.force() =
+          controller_->datastore().get<Eigen::Vector3d>(robot_ + "::estimatedExternalWrench_Force");
+      estimatedExternalWrench_centroid_.couple() =
+          controller_->datastore().get<Eigen::Vector3d>(robot_ + "::estimatedExternalWrench_Torque");
+    }
+    if(controller_->datastore().has(robot_ + "::worldCentroidKinePTrans"))
+    {
+      worldCentroidKinePTrans_ = controller_->datastore().get<sva::PTransformd>(robot_ + "::worldCentroidKinePTrans");
     }
   }
-
   return;
 }
 
@@ -187,7 +210,6 @@ void ObserverbasedImpedanceTask::getestimatedContactWrench(const std::string & s
       estimatedContactWrench_ =
           controller_->datastore().get<sva::ForceVecd>(robot_ + "::estimatedContactWrench_" + std::to_string(i));
       estimatedContactWrench_ = replaceForceTorque(estimatedContactWrench_);
-      // mc_rtc::log::info("{}", estimatedContactWrench_);
     }
   }
   else { mc_rtc::log::error("[ObserverbasedImpedanceTask] No EstimatedContactWrench is exported"); }
@@ -213,6 +235,20 @@ sva::ForceVecd ObserverbasedImpedanceTask::transformContactWrench(const sva::For
   sva::PTransformd X_surface_ft = X_0_ft * X_0_surface.inv();
 
   sva::ForceVecd wrench_out = X_surface_ft.dualMul(wrench);
+
+  return wrench_out;
+}
+
+sva::ForceVecd ObserverbasedImpedanceTask::transformExternalWrench(const sva::ForceVecd wrench,
+                                                                   const std::string surface)
+{
+  sva::PTransformd X_0_surface = robots.robot(rIndex).frame(surface).position(); // ^surface X_0
+
+  sva::PTransformd X_0_centroid = worldCentroidKinePTrans_; // ^controid X_0
+
+  sva::PTransformd X_surface_com = X_0_surface * X_0_centroid.inv();
+
+  sva::ForceVecd wrench_out = X_surface_com.dualMul(wrench);
 
   return wrench_out;
 }
