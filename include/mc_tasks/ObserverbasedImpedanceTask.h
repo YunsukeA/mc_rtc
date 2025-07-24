@@ -47,10 +47,10 @@ protected:
 
 private:
   std::string robot_;
-  bool exportContactWrench_ = true;
+  bool exportContactWrench_ = false;
   bool exportExternalWrench_ = true;
   int MaxContacts_ = 4;
-  std::string usingWrench_;
+  std::string usingWrench_ = "External";
 
   sva::ForceVecd estimatedContactWrench_;
   sva::ForceVecd estimatedContactWrench_sensorFrame_;

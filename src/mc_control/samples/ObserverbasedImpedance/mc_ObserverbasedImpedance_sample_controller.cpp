@@ -2,16 +2,17 @@
  * Copyright 2015-2020 CNRS-UM LIRMM, CNRS-AIST JRL
  */
 
-#include "ObserverbasedImpedance_controller.h"
+#include "mc_ObserverbasedImpedance_sample_controller.h"
 
 #include <mc_rtc/constants.h>
 
 namespace mc_control
 {
 
-ObserverbasedImpedance::ObserverbasedImpedance(std::shared_ptr<mc_rbdyn::RobotModule> robot_module,
-                                               double dt,
-                                               Backend backend)
+ObserverbasedImpedanceSampleController::ObserverbasedImpedanceSampleController(
+    std::shared_ptr<mc_rbdyn::RobotModule> robot_module,
+    double dt,
+    Backend backend)
 : MCController(robot_module, dt, backend), ctl_(*this)
 {
   solver().addConstraintSet(contactConstraint);
@@ -43,10 +44,11 @@ ObserverbasedImpedance::ObserverbasedImpedance(std::shared_ptr<mc_rbdyn::RobotMo
   Eigen::Vector3d posM = Eigen::Vector3d::Constant(1.0);
   Eigen::Vector3d posK = Eigen::Vector3d(100.0, 100.0, 1000.0);
   Eigen::Vector3d posD = Eigen::Vector3d(50.0, 50.0, 100.0);
-  ObserverbasedimpedanceTask_ = std::make_shared<mc_tasks::force::ObserverbasedImpedanceTask>(
+  ObserverbasedImpedanceTask_ = std::make_shared<mc_tasks::force::ObserverbasedImpedanceTask>(
       "LeftGripper", robots(), &ctl_, robots().robotIndex(), 100.0);
-  ObserverbasedimpedanceTask_->load(solver(), config());
-  auto & gains = ObserverbasedimpedanceTask_->gains();
+  ObserverbasedImpedanceTask_->load(solver(), config());
+
+  auto & gains = ObserverbasedImpedanceTask_->gains();
   gains.mass() = {100 * posM, posM};
   gains.damper() = {100 * posD, posD};
   gains.spring() = {100 * posK, posK};
@@ -55,7 +57,7 @@ ObserverbasedImpedance::ObserverbasedImpedance(std::shared_ptr<mc_rbdyn::RobotMo
   mc_rtc::log::info("Impedance Controller Initialized!");
 }
 
-void ObserverbasedImpedance::reset(const ControllerResetData & reset_data)
+void ObserverbasedImpedanceSampleController::reset(const ControllerResetData & reset_data)
 {
   MCController::reset(reset_data);
 
@@ -67,32 +69,32 @@ void ObserverbasedImpedance::reset(const ControllerResetData & reset_data)
     addContact(Contact{robot().name(), env().name(), "RightFoot", "AllGround"});
   }
 
-  ObserverbasedimpedanceTask_->reset();
-  solver().addTask(ObserverbasedimpedanceTask_);
-  center_ = ObserverbasedimpedanceTask_->targetPose().translation() + Eigen::Vector3d{0.0, radius_, 0.0};
-  orientation_ = ObserverbasedimpedanceTask_->targetPose().rotation();
+  ObserverbasedImpedanceTask_->reset();
+  solver().addTask(ObserverbasedImpedanceTask_);
+  center_ = ObserverbasedImpedanceTask_->targetPose().translation() + Eigen::Vector3d{0.0, radius_, 0.0};
+  orientation_ = ObserverbasedImpedanceTask_->targetPose().rotation();
   angle_ = 3 * mc_rtc::constants::PI / 2.;
 
-  // impedanceTask_->addToLogger(logger());
+  ObserverbasedImpedanceTask_->addToLogger(logger());
   addGUI();
 }
 
-bool ObserverbasedImpedance::run()
+bool ObserverbasedImpedanceSampleController::run()
 {
 
   // Track the circle trajectory
-  ObserverbasedimpedanceTask_->targetPose({orientation_, circleTrajectory(angle_)});
+  ObserverbasedImpedanceTask_->targetPose({orientation_, circleTrajectory(angle_)});
   angle_ += speed_ * solver().dt();
 
   return mc_control::MCController::run();
 }
 
-Eigen::Vector3d ObserverbasedImpedance::circleTrajectory(double angle)
+Eigen::Vector3d ObserverbasedImpedanceSampleController::circleTrajectory(double angle)
 {
   return center_ + Eigen::Vector3d(radius_ * std::cos(angle), radius_ * std::sin(angle), 0);
 }
 
-void ObserverbasedImpedance::addGUI()
+void ObserverbasedImpedanceSampleController::addGUI()
 {
   // Generate samples every 10deg along the circle circumference
   auto circleSamples = std::vector<Eigen::Vector3d>{};
@@ -102,19 +104,21 @@ void ObserverbasedImpedance::addGUI()
     auto angle = 2 * mc_rtc::constants::PI * static_cast<double>(i) / static_cast<double>(circleSamples.size() - 1);
     circleSamples[i] = circleTrajectory(angle);
   }
-  gui()->addElement({"Impedance"}, mc_rtc::gui::Trajectory("Circle Trajectory",
-                                                           [circleSamples]() -> const std::vector<Eigen::Vector3d> &
-                                                           { return circleSamples; }));
+  gui()->addElement({"ObserverbasedImpedanceSampleController"},
+                    mc_rtc::gui::Trajectory("Circle Trajectory",
+                                            [circleSamples]() -> const std::vector<Eigen::Vector3d> &
+                                            { return circleSamples; }));
 }
 
-void ObserverbasedImpedance::stop()
+void ObserverbasedImpedanceSampleController::stop()
 {
-  gui()->removeCategory({"Impedance"});
+  gui()->removeCategory({"ObserverbasedImpedanceSampleController"});
 }
 
 } // namespace mc_control
 
-MULTI_CONTROLLERS_CONSTRUCTOR("ObserverbasedImpedance",
-                              mc_control::ObserverbasedImpedance(rm, dt, mc_control::MCController::Backend::Tasks),
-                              "ObserverbasedImpedance_TVM",
-                              mc_control::ObserverbasedImpedance(rm, dt, mc_control::MCController::Backend::TVM))
+MULTI_CONTROLLERS_CONSTRUCTOR(
+    "ObserverbasedImpedanceSampleController",
+    mc_control::ObserverbasedImpedanceSampleController(rm, dt, mc_control::MCController::Backend::Tasks),
+    "ObserverbasedImpedanceSampleController_TVM",
+    mc_control::ObserverbasedImpedanceSampleController(rm, dt, mc_control::MCController::Backend::TVM))

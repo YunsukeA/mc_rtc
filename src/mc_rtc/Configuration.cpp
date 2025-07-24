@@ -595,6 +595,8 @@ Configuration::Configuration(const std::string & path) : Configuration()
   auto doc = std::static_pointer_cast<internal::RapidJSONDocument>(v.doc_);
   doc->SetNull();
   load(path);
+
+  mc_rtc::log::info("Configuration loaded from {}", path);
 }
 
 Configuration Configuration::fromData(const std::string & data)

@@ -15,9 +15,9 @@
 namespace mc_control
 {
 
-struct MC_CONTROL_DLLAPI ObserverbasedImpedance : public MCController
+struct MC_CONTROL_DLLAPI ObserverbasedImpedanceSampleController : public MCController
 {
-  ObserverbasedImpedance(std::shared_ptr<mc_rbdyn::RobotModule> robot, double dt, Backend backend);
+  ObserverbasedImpedanceSampleController(std::shared_ptr<mc_rbdyn::RobotModule> robot, double dt, Backend backend);
   void reset(const ControllerResetData & reset_data) override;
   bool run() override;
   void stop() override;
@@ -29,7 +29,7 @@ protected:
 protected:
   double angle_ = 0.0;
   std::shared_ptr<mc_tasks::CoMTask> comTask_;
-  std::shared_ptr<mc_tasks::force::ObserverbasedImpedanceTask> ObserverbasedimpedanceTask_;
+  std::shared_ptr<mc_tasks::force::ObserverbasedImpedanceTask> ObserverbasedImpedanceTask_;
   // std::shared_ptr<mc_tasks::force::ImpedanceTask> impedanceTask_;
   double radius_ = 0.2;
   double speed_ = 0.5;

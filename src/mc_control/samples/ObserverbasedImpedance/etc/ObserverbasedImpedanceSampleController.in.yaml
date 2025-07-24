@@ -1,0 +1,8 @@
+---
+
+jvrc1:
+  ObserverbasedImpedance:
+    exportValue:
+      exportContactWrench: true
+      exportExternalWrench: true
+      usingWrench: Sensor # External, Contact

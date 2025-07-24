@@ -51,7 +51,7 @@ void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
   }
   else { measuredWrench_ = frame_->wrench(); }
 
-  lowPass_.update(estimatedContactWrench_);
+  lowPass_.update(measuredWrench_);
   filteredMeasuredWrench_ = lowPass_.eval();
 
   sva::MotionVecd deltaCompVelWPrev = deltaCompVelW_;
@@ -145,6 +145,7 @@ void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
 
 void ObserverbasedImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
 {
+  mc_rtc::log::info("[ObserverbasedImpedanceTask] {}", config.dump(true, true));
   if(config.has("gains")) { gains_ = config("gains"); }
   if(config.has("wrench")) { targetWrench(config("wrench")); }
   if(config.has("cutoffPeriod")) { cutoffPeriod(config("cutoffPeriod")); }
@@ -168,6 +169,7 @@ void ObserverbasedImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc
       mc_rtc::log::info("[ObserverbasedImpedance] usingWrench_: {}", usingWrench_);
     }
   }
+  else { mc_rtc::log::error("[ObserverbasedImpedanceTask] No exportValue is specified in the config file"); }
 }
 
 void ObserverbasedImpedanceTask::getestimatedExternalWrench()
@@ -187,6 +189,7 @@ void ObserverbasedImpedanceTask::getestimatedExternalWrench()
       worldCentroidKinePTrans_ = controller_->datastore().get<sva::PTransformd>(robot_ + "::worldCentroidKinePTrans");
     }
   }
+  else { mc_rtc::log::error("[ObserverbasedImpedanceTask] No EstimatedExternalWrench is exported"); }
   return;
 }
 
@@ -212,7 +215,6 @@ void ObserverbasedImpedanceTask::getestimatedContactWrench(const std::string & s
       estimatedContactWrench_ = replaceForceTorque(estimatedContactWrench_);
     }
   }
-  else { mc_rtc::log::error("[ObserverbasedImpedanceTask] No EstimatedContactWrench is exported"); }
 }
 
 sva::ForceVecd ObserverbasedImpedanceTask::replaceForceTorque(sva::ForceVecd target)
@@ -265,6 +267,7 @@ void ObserverbasedImpedanceTask::addToLogger(mc_rtc::Logger & logger)
   MC_RTC_LOG_HELPER(category + subcategory_est + "_ContactWrench_surfance", estimatedContactWrench_);
   MC_RTC_LOG_HELPER(category + subcategory_est + "_ContactWrench_sensorFrame", estimatedContactWrench_sensorFrame_);
   MC_RTC_LOG_HELPER(category + subcategory_est + "_ExternalWrench_centroid", estimatedExternalWrench_centroid_);
+  MC_RTC_LOG_HELPER(category + subcategory_est + "_ExternalWrench_surfaceFrame", measuredWrench_);
   MC_RTC_LOG_HELPER(category + subcategory_est + "_estimationError", estimationError_);
 }
 
@@ -274,17 +277,17 @@ void ObserverbasedImpedanceTask::addToLogger(mc_rtc::Logger & logger)
 namespace
 {
 static auto registered = mc_tasks::MetaTaskLoader::register_load_function(
-    "ObserverbasedImpedanceTask",
+    "ObserverbasedImpedance",
     [](mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
     {
       using Allocator = Eigen::aligned_allocator<mc_tasks::force::ObserverbasedImpedanceTask>;
-      const auto robotIndex = robotIndexFromConfig(config, solver.robots(), "ObserverbasedImpedanceTask");
+      const auto robotIndex = robotIndexFromConfig(config, solver.robots(), "ObserverbasedImpedance");
       const auto & robot = solver.robots().robot(robotIndex);
       const auto & frame = [&]() -> const mc_rbdyn::RobotFrame &
       {
         if(config.has("surface"))
         {
-          mc_rtc::log::deprecated("ObserverbasedImpedanceTask", "surface", "frame");
+          mc_rtc::log::deprecated("ObserverbasedImpedance", "surface", "frame");
           return robot.frame(config("surface"));
         }
         return robot.frame(config("frame"));

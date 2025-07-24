@@ -3,6 +3,6 @@
 #
 
 
-add_controller("ObserverbasedImpedance" "ObserverbasedImpedance_controller.cpp" "ObserverbasedImpedance_controller.h")
-configure_file(etc/ObserverbasedImpedance.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/etc/ObserverbasedImpedance.yaml")
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/etc/ObserverbasedImpedance.yaml" DESTINATION "${MC_CONTROLLER_RUNTIME_INSTALL_PREFIX}/etc")
+add_controller("ObserverbasedImpedanceSampleController" "mc_ObserverbasedImpedance_sample_controller.cpp" "mc_ObserverbasedImpedance_sample_controller.h")
+configure_file(etc/ObserverbasedImpedanceSampleController.in.yaml "${CMAKE_CURRENT_BINARY_DIR}/etc/ObserverbasedImpedanceSampleController.yaml")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/etc/ObserverbasedImpedanceSampleController.yaml" DESTINATION "${MC_CONTROLLER_RUNTIME_INSTALL_PREFIX}/etc")
