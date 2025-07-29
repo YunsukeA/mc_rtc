@@ -48,7 +48,7 @@ protected:
 private:
   std::string robot_;
   bool exportContactWrench_ = false;
-  bool exportExternalWrench_ = true;
+  bool exportExternalWrench_ = false;
   int MaxContacts_ = 4;
   std::string usingWrench_ = "External";
 
@@ -59,6 +59,8 @@ private:
   mc_control::MCController * controller_;
 
   sva::ForceVecd estimationError_;
+
+  sva::ForceVecd surfaceWrench_;
 
   sva::PTransformd worldCentroidKinePTrans_;
 };

@@ -36,10 +36,10 @@ ImpedanceTask::ImpedanceTask(const mc_rbdyn::RobotFrame & frame, double stiffnes
   type_ = "impedance";
   name_ = "impedance_" + robot.name() + "_" + frame.name();
 
-  if(!frame.hasForceSensor())
-  {
-    mc_rtc::log::error_and_throw("[{}] Frame {} does not have a force sensor attached", name_, frame.name());
-  }
+  // if(!frame.hasForceSensor())
+  // {
+  //   mc_rtc::log::error_and_throw("[{}] Frame {} does not have a force sensor attached", name_, frame.name());
+  // }
 }
 
 void ImpedanceTask::update(mc_solver::QPSolver & solver)
@@ -182,7 +182,6 @@ void ImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc::Configurati
   // the TrajectoryTaskGeneric's target, but not the compliance target, so we
   // need to set it manually here.
   targetPose(TransformTask::target());
-  
 }
 
 void ImpedanceTask::addToSolver(mc_solver::QPSolver & solver)

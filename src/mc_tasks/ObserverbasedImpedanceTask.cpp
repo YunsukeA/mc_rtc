@@ -1,5 +1,6 @@
 #include <mc_tasks/MetaTaskLoader.h>
 #include <mc_tasks/ObserverbasedImpedanceTask.h>
+#include "mc_rbdyn/ForceSensor.h"
 #include "mc_rtc/log/Logger.h"
 #include "mc_rtc/logging.h"
 
@@ -35,19 +36,20 @@ void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
   // 1. Filter the estimated wrench
   getestimatedContactWrench(surface());
   getestimatedExternalWrench();
+  surfaceWrench_ = frame_->forceSensor().wrenchWithoutGravity(robots.robot(rIndex));
 
   // choose the wrench to use
   if(usingWrench_ == "Contact")
   {
     measuredWrench_ = transformContactWrench(estimatedContactWrench_, surface(), frame_->forceSensor().name());
     wrenchError_ = estimatedContactWrench_ - targetWrench_;
-    estimationError_ = measuredWrench() - estimatedContactWrench_;
+    estimationError_ = surfaceWrench_ - estimatedContactWrench_;
   }
   else if(usingWrench_ == "External")
   {
     measuredWrench_ = transformExternalWrench(estimatedExternalWrench_centroid_, surface());
     wrenchError_ = measuredWrench_ - targetWrench_;
-    estimationError_ = measuredWrench() - measuredWrench_;
+    estimationError_ = surfaceWrench_ - measuredWrench_;
   }
   else { measuredWrench_ = frame_->wrench(); }
 
@@ -195,19 +197,19 @@ void ObserverbasedImpedanceTask::getestimatedExternalWrench()
 
 void ObserverbasedImpedanceTask::getestimatedContactWrench(const std::string & surface)
 {
-  static const std::map<std::string, int> surfaceMap = {
-      {"RightFoot", 0}, {"LeftFoot", 1}, {"RightGripper", 2}, {"LeftGripper", 3}};
+  static const std::map<std::string, int> surfaceMap = {{"RightFoot", 0},   {"LeftFoot", 1},  {"RightGripper", 2},
+                                                        {"LeftGripper", 3}, {"RightHand", 2}, {"LeftHand", 3}};
 
   auto it = surfaceMap.find(surface);
-  if(it == surfaceMap.end())
-  {
-    mc_rtc::log::error("[ObserverbasedImpedanceTask] Surface name is not correct");
-    return;
-  }
 
   int i = it->second;
   if(exportContactWrench_)
   {
+    if(it == surfaceMap.end())
+    {
+      mc_rtc::log::error("[ObserverbasedImpedanceTask] Surface name is not correct");
+      return;
+    }
     if(controller_->datastore().has(robot_ + "::estimatedContactWrench_" + std::to_string(i)))
     {
       estimatedContactWrench_ =
@@ -262,8 +264,7 @@ void ObserverbasedImpedanceTask::addToLogger(mc_rtc::Logger & logger)
   std::string subcategory_est = "estimation";
   std::string subcategory_force = "forcesensor_surfaceFrame";
 
-  logger.addLogEntry(category + "forcesensor_" + "surfaceFrame",
-                     [this]() { return this->robots.robot(rIndex).surfaceWrench(this->surface()); });
+  MC_RTC_LOG_HELPER(category + subcategory_force, surfaceWrench_);
   MC_RTC_LOG_HELPER(category + subcategory_est + "_ContactWrench_surfance", estimatedContactWrench_);
   MC_RTC_LOG_HELPER(category + subcategory_est + "_ContactWrench_sensorFrame", estimatedContactWrench_sensorFrame_);
   MC_RTC_LOG_HELPER(category + subcategory_est + "_ExternalWrench_centroid", estimatedExternalWrench_centroid_);
