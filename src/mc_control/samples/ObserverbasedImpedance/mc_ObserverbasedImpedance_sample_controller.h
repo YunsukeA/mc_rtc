@@ -17,7 +17,10 @@ namespace mc_control
 
 struct MC_CONTROL_DLLAPI ObserverbasedImpedanceSampleController : public MCController
 {
-  ObserverbasedImpedanceSampleController(std::shared_ptr<mc_rbdyn::RobotModule> robot, double dt, Backend backend);
+  ObserverbasedImpedanceSampleController(std::shared_ptr<mc_rbdyn::RobotModule> robot,
+                                         double dt,
+                                         const mc_rtc::Configuration & config,
+                                         Backend backend);
   void reset(const ControllerResetData & reset_data) override;
   bool run() override;
   void stop() override;

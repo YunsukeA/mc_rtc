@@ -12,6 +12,7 @@ namespace mc_control
 ObserverbasedImpedanceSampleController::ObserverbasedImpedanceSampleController(
     std::shared_ptr<mc_rbdyn::RobotModule> robot_module,
     double dt,
+    const mc_rtc::Configuration & config,
     Backend backend)
 : MCController(robot_module, dt, backend), ctl_(*this)
 {
@@ -46,7 +47,7 @@ ObserverbasedImpedanceSampleController::ObserverbasedImpedanceSampleController(
   Eigen::Vector3d posD = Eigen::Vector3d(50.0, 50.0, 100.0);
   ObserverbasedImpedanceTask_ = std::make_shared<mc_tasks::force::ObserverbasedImpedanceTask>(
       "LeftGripper", robots(), &ctl_, robots().robotIndex(), 100.0);
-  ObserverbasedImpedanceTask_->load(solver(), config());
+  ObserverbasedImpedanceTask_->load(solver(), config);
 
   auto & gains = ObserverbasedImpedanceTask_->gains();
   gains.mass() = {100 * posM, posM};
@@ -119,6 +120,6 @@ void ObserverbasedImpedanceSampleController::stop()
 
 MULTI_CONTROLLERS_CONSTRUCTOR(
     "ObserverbasedImpedanceSampleController",
-    mc_control::ObserverbasedImpedanceSampleController(rm, dt, mc_control::MCController::Backend::Tasks),
+    mc_control::ObserverbasedImpedanceSampleController(rm, dt, config, mc_control::MCController::Backend::Tasks),
     "ObserverbasedImpedanceSampleController_TVM",
-    mc_control::ObserverbasedImpedanceSampleController(rm, dt, mc_control::MCController::Backend::TVM))
+    mc_control::ObserverbasedImpedanceSampleController(rm, dt, config, mc_control::MCController::Backend::TVM))
