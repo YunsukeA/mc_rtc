@@ -35,11 +35,6 @@ ImpedanceTask::ImpedanceTask(const mc_rbdyn::RobotFrame & frame, double stiffnes
   const auto & robot = frame.robot();
   type_ = "impedance";
   name_ = "impedance_" + robot.name() + "_" + frame.name();
-
-  // if(!frame.hasForceSensor())
-  // {
-  //   mc_rtc::log::error_and_throw("[{}] Frame {} does not have a force sensor attached", name_, frame.name());
-  // }
 }
 
 void ImpedanceTask::update(mc_solver::QPSolver & solver)
