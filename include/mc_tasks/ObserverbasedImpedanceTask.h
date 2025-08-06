@@ -50,7 +50,7 @@ private:
   bool exportContactWrench_ = false;
   bool exportExternalWrench_ = false;
   int MaxContacts_ = 4;
-  std::string usingWrench_ = "External";
+  std::string usingWrench_ = "Sensor";
 
   sva::ForceVecd estimatedContactWrench_;
   sva::ForceVecd estimatedContactWrench_sensorFrame_;

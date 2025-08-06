@@ -42,16 +42,21 @@ void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
   if(usingWrench_ == "Contact")
   {
     measuredWrench_ = transformContactWrench(estimatedContactWrench_, surface(), frame_->forceSensor().name());
-    wrenchError_ = estimatedContactWrench_ - targetWrench_;
     estimationError_ = surfaceWrench_ - estimatedContactWrench_;
   }
   else if(usingWrench_ == "External")
   {
     measuredWrench_ = transformExternalWrench(estimatedExternalWrench_centroid_, surface());
-    wrenchError_ = measuredWrench_ - targetWrench_;
     estimationError_ = surfaceWrench_ - measuredWrench_;
   }
-  else { measuredWrench_ = frame_->wrench(); }
+  else if(usingWrench_ == "None") { measuredWrench_ = sva::ForceVecd::Zero(); }
+  else if(usingWrench_ == "Sensor") { measuredWrench_ = frame_->wrench(); }
+  else
+  {
+    mc_rtc::log::error_and_throw("[ObserverbasedImpedanceTask] usingWrench_ is not defined correctly: {}",
+                                 usingWrench_);
+  }
+  wrenchError_ = measuredWrench_ - targetWrench_;
 
   lowPass_.update(measuredWrench_);
   filteredMeasuredWrench_ = lowPass_.eval();
@@ -191,7 +196,7 @@ void ObserverbasedImpedanceTask::getestimatedExternalWrench()
       worldCentroidKinePTrans_ = controller_->datastore().get<sva::PTransformd>(robot_ + "::worldCentroidKinePTrans");
     }
   }
-  else { mc_rtc::log::error("[ObserverbasedImpedanceTask] No EstimatedExternalWrench is exported"); }
+  // else { mc_rtc::log::error("[ObserverbasedImpedanceTask] No EstimatedExternalWrench is exported"); }
   return;
 }
 
@@ -263,13 +268,16 @@ void ObserverbasedImpedanceTask::addToLogger(mc_rtc::Logger & logger)
   std::string category = "ObserverbasedImpedanceTask_";
   std::string subcategory_est = "estimation";
   std::string subcategory_force = "forcesensor_surfaceFrame";
+  std::string wrench_category = "wrench_";
 
-  MC_RTC_LOG_HELPER(category + subcategory_force, surfaceWrench_);
-  MC_RTC_LOG_HELPER(category + subcategory_est + "_ContactWrench_surfance", estimatedContactWrench_);
-  MC_RTC_LOG_HELPER(category + subcategory_est + "_ContactWrench_sensorFrame", estimatedContactWrench_sensorFrame_);
-  MC_RTC_LOG_HELPER(category + subcategory_est + "_ExternalWrench_centroid", estimatedExternalWrench_centroid_);
-  MC_RTC_LOG_HELPER(category + subcategory_est + "_ExternalWrench_surfaceFrame", measuredWrench_);
-  MC_RTC_LOG_HELPER(category + subcategory_est + "_estimationError", estimationError_);
+  MC_RTC_LOG_HELPER(category + wrench_category + subcategory_force, surfaceWrench_);
+  MC_RTC_LOG_HELPER(category + wrench_category + subcategory_est + "_ExternalWrench_centroid",
+                    estimatedExternalWrench_centroid_);
+  MC_RTC_LOG_HELPER(category + wrench_category + subcategory_est + "_ExternalWrench_surfaceFrame", measuredWrench_);
+  MC_RTC_LOG_HELPER(category + wrench_category + subcategory_est + "_estimationError", estimationError_);
+  MC_RTC_LOG_HELPER(category + wrench_category + subcategory_est + "_targetWrench", targetWrench_);
+  MC_RTC_LOG_HELPER(category + wrench_category + subcategory_est + "_measuredWrench", measuredWrench_);
+  MC_RTC_LOG_HELPER(category + wrench_category + subcategory_est + "_wrenchError", wrenchError_);
 }
 
 } // namespace force

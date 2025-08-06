@@ -231,7 +231,7 @@ void ObserverbasedAdmittanceTask::getestimatedContactWrench(const std::string & 
                          robot_.name() + "::estimatedContactWrench_" + std::to_string(i));
     }
   }
-  else { mc_rtc::log::error("[ObserverbasedAdmittanceTask] No EstimatedContactWrench is exported"); }
+  // else { mc_rtc::log::error("[ObserverbasedAdmittanceTask] No EstimatedContactWrench is exported"); }
 }
 
 sva::ForceVecd ObserverbasedAdmittanceTask::replaceForceTorque(sva::ForceVecd target)
