@@ -5,6 +5,7 @@
 #
 
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtGui import QFontMetrics
 
 try:
     from . import ui
@@ -788,9 +789,24 @@ class MCLogTab(QtWidgets.QWidget):
 
         def update_y_selector(ySelector):
             self.tree_view.update_y_selector(ySelector, ySelector)
+
+            font_metrics = QFontMetrics(ySelector.font())
+            longest = max(
+              (index.data() for index in ySelector.model().match(
+               ySelector.model().index(0, 0),
+                    QtCore.Qt.DisplayRole,
+                    "*",
+                    -1,
+                    QtCore.Qt.MatchWildcard | QtCore.Qt.MatchRecursive
+                ) if index.data()),
+                key=len,
+                default=""
+            )
+
+            width = font_metrics.width(longest)
+            ySelector.setMinimumWidth(width + 40)
+            ySelector.setMaximumWidth(width + 40)
             ySelector.resizeColumnToContents(0)
-            cWidth = ySelector.sizeHintForColumn(0)
-            ySelector.setMaximumWidth(cWidth + 75)
 
         update_y_selector(self.ui.y1Selector)
         update_y_selector(self.ui.y2Selector)
