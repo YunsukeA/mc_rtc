@@ -1,6 +1,7 @@
 #include <mc_tasks/MetaTaskLoader.h>
 #include <mc_tasks/ObserverbasedImpedanceTask.h>
 #include "mc_rbdyn/ForceSensor.h"
+#include "mc_rtc/gui/plot/types.h"
 #include "mc_rtc/log/Logger.h"
 #include "mc_rtc/logging.h"
 
@@ -148,6 +149,8 @@ void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
   mc_tasks::TransformTask::refAccel(T_0_s * (targetAccelW_ + deltaCompAccelW_)); // represented in the surface frame
   mc_tasks::TransformTask::refVelB(T_0_s * (targetVelW_ + deltaCompVelW_)); // represented in the surface frame
   mc_tasks::TransformTask::target(compliancePose()); // represented in the world frame
+
+  t_ += dt; // for plot
 }
 
 void ObserverbasedImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc::Configuration & config)
@@ -291,6 +294,110 @@ void ObserverbasedImpedanceTask::addToLogger(mc_rtc::Logger & logger)
   MC_RTC_LOG_HELPER(category + wrench_category + usingWrench_ + "_targetWrench", targetWrench_);
   MC_RTC_LOG_HELPER(category + wrench_category + usingWrench_ + "_measuredWrench", measuredWrench_);
   MC_RTC_LOG_HELPER(category + wrench_category + usingWrench_ + "_wrenchError", wrenchError_);
+}
+
+void ObserverbasedImpedanceTask::addToGUI(mc_rtc::gui::StateBuilder & gui)
+{
+  // Don't add TransformTask because the target of TransformTask should not be set by user
+  TrajectoryTaskGeneric::addToGUI(gui);
+
+  gui.addElement({"Tasks", name_},
+                 mc_rtc::gui::Transform(
+                     "targetPose", [this]() -> const sva::PTransformd & { return this->targetPose(); },
+                     [this](const sva::PTransformd & pos) { this->targetPose(pos); }));
+  gui.addElement({"Tasks", name_},
+                 mc_rtc::gui::Transform("compliancePose", [this]() { return this->compliancePose(); }));
+  gui.addElement({"Tasks", name_}, mc_rtc::gui::Transform("pose", [this]() { return this->surfacePose(); }));
+  gui.addElement({"Tasks", name_}, mc_rtc::gui::ArrayInput(
+                                       "targetWrench", {"cx", "cy", "cz", "fx", "fy", "fz"},
+                                       [this]() { return this->targetWrench().vector(); },
+                                       [this](const Eigen::Vector6d & a) { this->targetWrench(a); }));
+  gui.addElement({"Tasks", name_}, mc_rtc::gui::ArrayLabel("measuredWrench", {"cx", "cy", "cz", "fx", "fy", "fz"},
+                                                           [this]() { return this->measuredWrench_.vector(); }));
+  gui.addElement({"Tasks", name_},
+                 mc_rtc::gui::ArrayLabel("filteredMeasuredWrench", {"cx", "cy", "cz", "fx", "fy", "fz"},
+                                         [this]() { return this->filteredMeasuredWrench_.vector(); }));
+  gui.addElement({"Tasks", name_}, mc_rtc::gui::NumberInput(
+                                       "cutoffPeriod", [this]() { return this->cutoffPeriod(); },
+                                       [this](double a) { return this->cutoffPeriod(a); }));
+  gui.addElement({"Tasks", name_},
+                 mc_rtc::gui::Checkbox("hold", [this]() { return hold_; }, [this]() { hold_ = !hold_; }));
+  gui.addElement(
+      {"Tasks", name_, "Observerbased Impedance gains"},
+      mc_rtc::gui::ArrayInput(
+          "mass", {"cx", "cy", "cz", "fx", "fy", "fz"}, [this]() -> const sva::ImpedanceVecd &
+          { return gains().mass().vec(); }, [this](const Eigen::Vector6d & a) { gains().mass().vec(a); }),
+      mc_rtc::gui::ArrayInput(
+          "damper", {"cx", "cy", "cz", "fx", "fy", "fz"}, [this]() -> const sva::ImpedanceVecd &
+          { return gains().damper().vec(); }, [this](const Eigen::Vector6d & a) { gains().damper().vec(a); }),
+      mc_rtc::gui::ArrayInput(
+          "spring", {"cx", "cy", "cz", "fx", "fy", "fz"}, [this]() -> const sva::ImpedanceVecd &
+          { return gains().spring().vec(); }, [this](const Eigen::Vector6d & a) { gains().spring().vec(a); }),
+      mc_rtc::gui::ArrayInput(
+          "wrench", {"cx", "cy", "cz", "fx", "fy", "fz"}, [this]() -> const sva::ImpedanceVecd &
+          { return gains().wrench().vec(); }, [this](const Eigen::Vector6d & a) { gains().wrench().vec(a); }));
+
+  gui.addPlot("wrench fx", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+              mc_rtc::gui::plot::AxisConfiguration("Y", {-100, 100}),
+              mc_rtc::gui::plot::Y(
+                  "target fx", [this]() { return this->targetWrench().vector()[3]; }, mc_rtc::gui::Color::Red),
+              mc_rtc::gui::plot::Y(
+                  "estimated fx", [this]() { return this->measuredWrench_.vector()[3]; }, mc_rtc::gui::Color::Red,
+                  mc_rtc::gui::plot::Style::Dashed),
+              mc_rtc::gui::plot::Y(
+                  "measured fx", [this]() { return this->surfaceWrench_.vector()[3]; }, mc_rtc::gui::Color::Red,
+                  mc_rtc::gui::plot::Style::Dotted));
+
+  gui.addPlot("wrench fy", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+              mc_rtc::gui::plot::AxisConfiguration("Y", {-100, 100}),
+              mc_rtc::gui::plot::Y(
+                  "target fy", [this]() { return this->targetWrench().vector()[4]; }, mc_rtc::gui::Color::Green),
+              mc_rtc::gui::plot::Y(
+                  "estimated fy", [this]() { return this->measuredWrench_.vector()[4]; }, mc_rtc::gui::Color::Green,
+                  mc_rtc::gui::plot::Style::Dashed),
+              mc_rtc::gui::plot::Y(
+                  "measured fy", [this]() { return this->surfaceWrench_.vector()[4]; }, mc_rtc::gui::Color::Green,
+                  mc_rtc::gui::plot::Style::Dotted));
+  gui.addPlot("wrench fz", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+              mc_rtc::gui::plot::AxisConfiguration("Y", {-100, 100}),
+              mc_rtc::gui::plot::Y(
+                  "target fz", [this]() { return this->targetWrench().vector()[5]; }, mc_rtc::gui::Color::Blue),
+              mc_rtc::gui::plot::Y(
+                  "estimated fz", [this]() { return this->measuredWrench_.vector()[5]; }, mc_rtc::gui::Color::Blue,
+                  mc_rtc::gui::plot::Style::Dashed),
+              mc_rtc::gui::plot::Y(
+                  "measured fz", [this]() { return this->surfaceWrench_.vector()[5]; }, mc_rtc::gui::Color::Blue,
+                  mc_rtc::gui::plot::Style::Dotted));
+  gui.addPlot("wrench cx", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+              mc_rtc::gui::plot::AxisConfiguration("Y", {-50, 50}),
+              mc_rtc::gui::plot::Y(
+                  "target cx", [this]() { return this->targetWrench().vector()[0]; }, mc_rtc::gui::Color::Red),
+              mc_rtc::gui::plot::Y(
+                  "estimated cx", [this]() { return this->measuredWrench_.vector()[0]; }, mc_rtc::gui::Color::Red,
+                  mc_rtc::gui::plot::Style::Dashed),
+              mc_rtc::gui::plot::Y(
+                  "measured cx", [this]() { return this->surfaceWrench_.vector()[0]; }, mc_rtc::gui::Color::Red,
+                  mc_rtc::gui::plot::Style::Dotted));
+  gui.addPlot("wrench cy", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+              mc_rtc::gui::plot::AxisConfiguration("Y", {-50, 50}),
+              mc_rtc::gui::plot::Y(
+                  "target cy", [this]() { return this->targetWrench().vector()[1]; }, mc_rtc::gui::Color::Green),
+              mc_rtc::gui::plot::Y(
+                  "estimated cy", [this]() { return this->measuredWrench_.vector()[1]; }, mc_rtc::gui::Color::Green,
+                  mc_rtc::gui::plot::Style::Dashed),
+              mc_rtc::gui::plot::Y(
+                  "measured cy", [this]() { return this->surfaceWrench_.vector()[1]; }, mc_rtc::gui::Color::Green,
+                  mc_rtc::gui::plot::Style::Dotted));
+  gui.addPlot("wrench cz", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+              mc_rtc::gui::plot::AxisConfiguration("Y", {-50, 50}),
+              mc_rtc::gui::plot::Y(
+                  "target cz", [this]() { return this->targetWrench().vector()[2]; }, mc_rtc::gui::Color::Blue),
+              mc_rtc::gui::plot::Y(
+                  "estimated cz", [this]() { return this->measuredWrench_.vector()[2]; }, mc_rtc::gui::Color::Blue,
+                  mc_rtc::gui::plot::Style::Dashed),
+              mc_rtc::gui::plot::Y(
+                  "measured cz", [this]() { return this->surfaceWrench_.vector()[2]; }, mc_rtc::gui::Color::Blue,
+                  mc_rtc::gui::plot::Style::Dotted));
 }
 
 } // namespace force

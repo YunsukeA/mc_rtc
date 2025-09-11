@@ -1,6 +1,7 @@
 #pragma once
 #include <mc_tasks/ImpedanceTask.h>
 
+#include <mc_rtc/gui/plot.h>
 #include <mc_rtc/log/Logger.h>
 #include <SpaceVecAlg/SpaceVecAlg>
 #include "mc_control/MCController.h"
@@ -37,6 +38,8 @@ public:
   sva::ForceVecd replaceForceTorque(sva::ForceVecd target);
 
   void addToLogger(mc_rtc::Logger & logger) override;
+  void addToGUI(mc_rtc::gui::StateBuilder & gui) override;
+
   sva::ForceVecd transformContactWrench(const sva::ForceVecd wrench,
                                         const std::string surface,
                                         const std::string forceSensor);
@@ -44,6 +47,7 @@ public:
 
 protected:
   sva::ForceVecd wrenchError_ = sva::ForceVecd(Eigen::Vector6d::Zero());
+  double t_ = 0.0;
 
 private:
   std::string robot_;
