@@ -56,6 +56,8 @@ private:
   int MaxContacts_ = 4;
   std::string usingWrench_ = "Sensor";
 
+  bool addPlot_ = false;
+
   sva::ForceVecd estimatedContactWrench_;
   sva::ForceVecd estimatedContactWrench_sensorFrame_;
 

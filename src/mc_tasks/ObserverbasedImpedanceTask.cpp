@@ -1,6 +1,9 @@
 #include <mc_tasks/MetaTaskLoader.h>
 #include <mc_tasks/ObserverbasedImpedanceTask.h>
+#include <SpaceVecAlg/SpaceVecAlg>
 #include "mc_rbdyn/ForceSensor.h"
+#include "mc_rbdyn/RobotModule.h"
+#include "mc_rtc/Configuration.h"
 #include "mc_rtc/gui/plot/types.h"
 #include "mc_rtc/log/Logger.h"
 #include "mc_rtc/logging.h"
@@ -36,7 +39,8 @@ void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
 {
   double dt = solver.dt();
   // 1. Filter the estimated wrench
-  surfaceWrench_ = frame_->forceSensor().wrenchWithoutGravity(robots.robot(rIndex));
+  if(frame_->hasForceSensor()) { surfaceWrench_ = frame_->forceSensor().wrenchWithoutGravity(robots.robot(rIndex)); }
+  else { surfaceWrench_ = sva::ForceVecd::Zero(); }
 
   // choose the wrench to use
   if(usingWrench_ == "Contact")
@@ -181,6 +185,7 @@ void ObserverbasedImpedanceTask::load(mc_solver::QPSolver & solver, const mc_rtc
     }
   }
   else { mc_rtc::log::error("[ObserverbasedImpedanceTask] No exportValue is specified in the config file"); }
+  if(config.has("addPlot")) { addPlot_ = config("addPlot"); }
 }
 
 void ObserverbasedImpedanceTask::getestimatedExternalWrench()
@@ -338,67 +343,70 @@ void ObserverbasedImpedanceTask::addToGUI(mc_rtc::gui::StateBuilder & gui)
           "wrench", {"cx", "cy", "cz", "fx", "fy", "fz"}, [this]() -> const sva::ImpedanceVecd &
           { return gains().wrench().vec(); }, [this](const Eigen::Vector6d & a) { gains().wrench().vec(a); }));
 
-  gui.addPlot("wrench fx", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-              mc_rtc::gui::plot::AxisConfiguration("Y", {-100, 100}),
-              mc_rtc::gui::plot::Y(
-                  "target fx", [this]() { return this->targetWrench().vector()[3]; }, Color::Red),
-              mc_rtc::gui::plot::Y(
-                  "estimated fx", [this]() { return this->measuredWrench_.vector()[3]; }, Color::Blue,
-                  mc_rtc::gui::plot::Style::Dashed),
-              mc_rtc::gui::plot::Y(
-                  "measured fx", [this]() { return this->surfaceWrench_.vector()[3]; }, Color::Green,
-                  mc_rtc::gui::plot::Style::Dotted));
+  if(addPlot_)
+  {
+    gui.addPlot(name_ + "_wrench fx", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+                mc_rtc::gui::plot::AxisConfiguration("Y", {-100, 100}),
+                mc_rtc::gui::plot::Y(
+                    "target fx", [this]() { return this->targetWrench().vector()[3]; }, Color::Red),
+                mc_rtc::gui::plot::Y(
+                    "estimated fx", [this]() { return this->measuredWrench_.vector()[3]; }, Color::Blue,
+                    mc_rtc::gui::plot::Style::Dashed),
+                mc_rtc::gui::plot::Y(
+                    "measured fx", [this]() { return this->surfaceWrench_.vector()[3]; }, Color::Green,
+                    mc_rtc::gui::plot::Style::Dotted));
 
-  gui.addPlot("wrench fy", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-              mc_rtc::gui::plot::AxisConfiguration("Y", {-100, 100}),
-              mc_rtc::gui::plot::Y(
-                  "target fy", [this]() { return this->targetWrench().vector()[4]; }, Color::Red),
-              mc_rtc::gui::plot::Y(
-                  "estimated fy", [this]() { return this->measuredWrench_.vector()[4]; }, Color::Blue,
-                  mc_rtc::gui::plot::Style::Dashed),
-              mc_rtc::gui::plot::Y(
-                  "measured fy", [this]() { return this->surfaceWrench_.vector()[4]; }, Color::Green,
-                  mc_rtc::gui::plot::Style::Dotted));
-  gui.addPlot("wrench fz", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-              mc_rtc::gui::plot::AxisConfiguration("Y", {-1000, 1000}),
-              mc_rtc::gui::plot::Y(
-                  "target fz", [this]() { return this->targetWrench().vector()[5]; }, Color::Red),
-              mc_rtc::gui::plot::Y(
-                  "estimated fz", [this]() { return this->measuredWrench_.vector()[5]; }, Color::Blue,
-                  mc_rtc::gui::plot::Style::Dashed),
-              mc_rtc::gui::plot::Y(
-                  "measured fz", [this]() { return this->surfaceWrench_.vector()[5]; }, Color::Green,
-                  mc_rtc::gui::plot::Style::Dotted));
-  gui.addPlot("wrench cx", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-              mc_rtc::gui::plot::AxisConfiguration("Y", {-50, 50}),
-              mc_rtc::gui::plot::Y(
-                  "target cx", [this]() { return this->targetWrench().vector()[0]; }, Color::Red),
-              mc_rtc::gui::plot::Y(
-                  "estimated cx", [this]() { return this->measuredWrench_.vector()[0]; }, Color::Blue,
-                  mc_rtc::gui::plot::Style::Dashed),
-              mc_rtc::gui::plot::Y(
-                  "measured cx", [this]() { return this->surfaceWrench_.vector()[0]; }, Color::Green,
-                  mc_rtc::gui::plot::Style::Dotted));
-  gui.addPlot("wrench cy", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-              mc_rtc::gui::plot::AxisConfiguration("Y", {-50, 50}),
-              mc_rtc::gui::plot::Y(
-                  "target cy", [this]() { return this->targetWrench().vector()[1]; }, Color::Red),
-              mc_rtc::gui::plot::Y(
-                  "estimated cy", [this]() { return this->measuredWrench_.vector()[1]; }, Color::Blue,
-                  mc_rtc::gui::plot::Style::Dashed),
-              mc_rtc::gui::plot::Y(
-                  "measured cy", [this]() { return this->surfaceWrench_.vector()[1]; }, Color::Green,
-                  mc_rtc::gui::plot::Style::Dotted));
-  gui.addPlot("wrench cz", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
-              mc_rtc::gui::plot::AxisConfiguration("Y", {-50, 50}),
-              mc_rtc::gui::plot::Y(
-                  "target cz", [this]() { return this->targetWrench().vector()[2]; }, Color::Red),
-              mc_rtc::gui::plot::Y(
-                  "estimated cz", [this]() { return this->measuredWrench_.vector()[2]; }, Color::Blue,
-                  mc_rtc::gui::plot::Style::Dashed),
-              mc_rtc::gui::plot::Y(
-                  "measured cz", [this]() { return this->surfaceWrench_.vector()[2]; }, Color::Green,
-                  mc_rtc::gui::plot::Style::Dotted));
+    gui.addPlot(name_ + "_wrench fy", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+                mc_rtc::gui::plot::AxisConfiguration("Y", {-100, 100}),
+                mc_rtc::gui::plot::Y(
+                    "target fy", [this]() { return this->targetWrench().vector()[4]; }, Color::Red),
+                mc_rtc::gui::plot::Y(
+                    "estimated fy", [this]() { return this->measuredWrench_.vector()[4]; }, Color::Blue,
+                    mc_rtc::gui::plot::Style::Dashed),
+                mc_rtc::gui::plot::Y(
+                    "measured fy", [this]() { return this->surfaceWrench_.vector()[4]; }, Color::Green,
+                    mc_rtc::gui::plot::Style::Dotted));
+    gui.addPlot(name_ + "_wrench fz", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+                mc_rtc::gui::plot::AxisConfiguration("Y", {-1000, 1000}),
+                mc_rtc::gui::plot::Y(
+                    "target fz", [this]() { return this->targetWrench().vector()[5]; }, Color::Red),
+                mc_rtc::gui::plot::Y(
+                    "estimated fz", [this]() { return this->measuredWrench_.vector()[5]; }, Color::Blue,
+                    mc_rtc::gui::plot::Style::Dashed),
+                mc_rtc::gui::plot::Y(
+                    "measured fz", [this]() { return this->surfaceWrench_.vector()[5]; }, Color::Green,
+                    mc_rtc::gui::plot::Style::Dotted));
+    gui.addPlot(name_ + "_wrench cx", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+                mc_rtc::gui::plot::AxisConfiguration("Y", {-50, 50}),
+                mc_rtc::gui::plot::Y(
+                    "target cx", [this]() { return this->targetWrench().vector()[0]; }, Color::Red),
+                mc_rtc::gui::plot::Y(
+                    "estimated cx", [this]() { return this->measuredWrench_.vector()[0]; }, Color::Blue,
+                    mc_rtc::gui::plot::Style::Dashed),
+                mc_rtc::gui::plot::Y(
+                    "measured cx", [this]() { return this->surfaceWrench_.vector()[0]; }, Color::Green,
+                    mc_rtc::gui::plot::Style::Dotted));
+    gui.addPlot(name_ + "_wrench cy", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+                mc_rtc::gui::plot::AxisConfiguration("Y", {-50, 50}),
+                mc_rtc::gui::plot::Y(
+                    "target cy", [this]() { return this->targetWrench().vector()[1]; }, Color::Red),
+                mc_rtc::gui::plot::Y(
+                    "estimated cy", [this]() { return this->measuredWrench_.vector()[1]; }, Color::Blue,
+                    mc_rtc::gui::plot::Style::Dashed),
+                mc_rtc::gui::plot::Y(
+                    "measured cy", [this]() { return this->surfaceWrench_.vector()[1]; }, Color::Green,
+                    mc_rtc::gui::plot::Style::Dotted));
+    gui.addPlot(name_ + "_wrench cz", mc_rtc::gui::plot::X("t", [this]() { return t_; }),
+                mc_rtc::gui::plot::AxisConfiguration("Y", {-50, 50}),
+                mc_rtc::gui::plot::Y(
+                    "target cz", [this]() { return this->targetWrench().vector()[2]; }, Color::Red),
+                mc_rtc::gui::plot::Y(
+                    "estimated cz", [this]() { return this->measuredWrench_.vector()[2]; }, Color::Blue,
+                    mc_rtc::gui::plot::Style::Dashed),
+                mc_rtc::gui::plot::Y(
+                    "measured cz", [this]() { return this->surfaceWrench_.vector()[2]; }, Color::Green,
+                    mc_rtc::gui::plot::Style::Dotted));
+  }
 }
 
 } // namespace force
