@@ -16,17 +16,44 @@ on:
     branches:
       - '**'
 
+env:
+  # Branch that triggered this workflow
+  GITHUB_BRANCH: ${{ github.head_ref || github.ref_name }}
+
 jobs:
   build:
     strategy:
       fail-fast: false
       matrix:
-        os: ["debian_buster", "ubuntu_22.04"]
-    runs-on: ubuntu-20.04
+        # os: ["debian_bullseye", "ubuntu_22.04"]
+        os: ["ubuntu_22.04"]
+    runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v2
+    - name: Dump github context
+      run:   echo "$GITHUB_CONTEXT"
+      shell: bash
+      env:
+       GITHUB_CONTEXT: ${{ toJson(github) }}
+    - name: Set repository name based on event (pull_request/push)
+      shell: bash
+      run: |
+         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+           echo "GITHUB_REPO_TRIGGER=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
+         else
+           echo "GITHUB_REPO_TRIGGER=${{ github.repository }}" >> $GITHUB_ENV
+         fi
+    - name: Use repository name
+      shell: bash
+      run: echo "The triggering repository is $GITHUB_REPO_TRIGGER"
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
+    - name: Clone superbuild
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        repository: mc-rtc/mc-rtc-superbuild
+        path: mc-rtc-superbuild
     - name: Free-up space
       run: |
         sudo rm -rf /opt/hostedtoolcache/CodeQL
@@ -45,8 +72,13 @@ jobs:
         echo "::group::Build base image"
         docker build -t mc-rtc-ci-${{matrix.os}} .
         echo "::endgroup::"
-        echo "::group::Run install"
-        docker run mc-rtc-ci-${{matrix.os}} /bin/bash -c 'cd /source/utils && ./build_and_install.sh --user-input false --build-benchmarks true --allow-root true'
+        echo "::group::Build in docker"
+        WITH_ROS_SUPPORT=ON
+        if [ ${{ matrix.os }} == "debian_bullseye" ]; then
+          WITH_ROS_SUPPORT=OFF
+        fi
+        echo "WITH_ROS_SUPPORT=${WITH_ROS_SUPPORT}"
+        docker run mc-rtc-ci-${{matrix.os}} /bin/bash -c "cd /source/mc-rtc-superbuild && ./utils/bootstrap-linux.sh && git config --global user.email 'arn.tanguy@gmail.com' && git config --global user.name 'Arnaud Tanguy (Automated CI update)' && mkdir -p ${TMPDIR-/tmp}/build-mc-rtc && cmake -S /source/mc-rtc-superbuild -B ${TMPDIR-/tmp}/build-mc-rtc -DCMAKE_BUILD_TYPE=RelWithDebInfo -DVERBOSE_TEST_OUTPUT=ON -DWITH_ROS_SUPPORT=${WITH_ROS_SUPPORT} -DMC_RTC_SUPERBUILD_OVERRIDE_mc_rtc_GITHUB=${GITHUB_REPO_TRIGGER} -DMC_RTC_SUPERBUILD_OVERRIDE_mc_rtc_GIT_TAG=origin/${GITHUB_BRANCH} && cmake --build ${TMPDIR-/tmp}/build-mc-rtc --config RelWithDebInfo"
         echo "::endgroup::"
     - name: Slack Notification
       if: failure()

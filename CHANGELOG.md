@@ -2,6 +2,46 @@
 
 ## [Unreleased]
 
+## [2.14.0] - 2025-08-28
+
+## What's Changed
+* RVIZ RobotModel dynamic update by @ThomasDuvinage in https://github.com/jrl-umi3218/mc_rtc/pull/471
+* [ImpedanceTask] Allow to set the limits of deltaComp from the task configurations by @mmurooka in https://github.com/jrl-umi3218/mc_rtc/pull/451
+* Correct TVM contact constraints to enable torque control by @Hugo-L3174 in https://github.com/jrl-umi3218/mc_rtc/pull/474
+
+## Fixes
+* Fix loading of color information from `PolyhedronConfig` in [a389935](https://github.com/jrl-umi3218/mc_rtc/commit/a389935bc481c4337027b8f73170b202e2b8a806)
+
+## New Contributors
+* @Hugo-L3174 made their first contribution in https://github.com/jrl-umi3218/mc_rtc/pull/474
+
+
+## [2.13.0] - 2025-05-19
+
+### Added
+
+### Changes
+
+- Drop support for ubuntu bionic/focal
+
+### Fixes
+
+- TransformTask: Fix use of targetFrame and relative from YAML configuration
+- RobotVisualizer: Fix behaviour of checkbox for adding/removing frames
+- `mc_rtc_new_fsm_controller`: upgrade to use importlib
+- Correctly replace debug suffix (cmake)
+- Properly store contacts' DoF in `mc_rbydn::Contact`
+- Ensure uniqueness of contacts
+- Add `mc_surfaces_visualization/mc_convex_visualization/mc_robot_visualization` tools to apt package
+- Remove the default all signal handler to avoid signal_handler message and FULL ROS MESSAGE QUEUE error (#456)
+- RobotMsg: fix wrong vector conversion for tau, alpha and alphaD (#445)
+- ImpedanceTask: Log compliance pose (#446)
+- Fix missing symbol in posture task
+
+- [cmake] Uninstall autoload files when plugin autoload option is disabled (#436)
+- [mc_control] Trim autoload files so they can be edited manually (#436)
+- [mc_rbdyn] Fix a bug in `addBodySensor` (#433)
+
 ## [2.12.0] - 2024-02-29
 
 ### Added
@@ -853,7 +893,9 @@ mc_rtc website and tutorials are now available in [Japanese](https://jrl-umi3218
 
 Initial release
 
-[Unreleased]: https://github.com/jrl-umi3218/mc_rtc/compare/v2.12.0...HEAD
+[Unreleased]: https://github.com/jrl-umi3218/mc_rtc/compare/v2.14.0...HEAD
+[2.14.0]: https://github.com/jrl-umi3218/mc_rtc/releases/tag/v2.14.0
+[2.13.0]: https://github.com/jrl-umi3218/mc_rtc/releases/tag/v2.13.0
 [2.12.0]: https://github.com/jrl-umi3218/mc_rtc/releases/tag/v2.12.0
 [2.11.0]: https://github.com/jrl-umi3218/mc_rtc/releases/tag/v2.11.0
 [2.10.0]: https://github.com/jrl-umi3218/mc_rtc/releases/tag/v2.10.0

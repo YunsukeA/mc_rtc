@@ -4,6 +4,7 @@
 CMakeLists.txt.user*
 *.autosave
 build/
+build
 *.bin
 *.pos
 utils/mc_log_gui/*.png

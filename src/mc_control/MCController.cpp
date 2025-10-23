@@ -6,6 +6,7 @@
 
 #include <mc_rbdyn/RobotLoader.h>
 #include <mc_rbdyn/RobotModule.h>
+#include <mc_rbdyn/RobotModule_visual.h>
 #include <mc_rtc/constants.h>
 
 #include <mc_rtc/ConfigurationHelpers.h>
@@ -244,7 +245,40 @@ MCController::MCController(const std::vector<std::shared_ptr<mc_rbdyn::RobotModu
         }
         init_robot(rname, rconfig);
       }
-      else if(!rconfig.has("module"))
+      else if(rconfig.has("module") || rconfig.has("visual"))
+      {
+        mc_rtc::log::info("robot config {}", rconfig.dump(true, true));
+        // Load robot from either a robot module or create one from a "visual" shape
+        mc_rbdyn::RobotModulePtr rm = nullptr;
+        if(rconfig.has("module"))
+        {
+          auto params = [&]() -> std::vector<std::string>
+          {
+            auto module = rconfig("module");
+            if(module.isArray()) { return module.operator std::vector<std::string>(); }
+            std::vector<std::string> params = rconfig("params", std::vector<std::string>{});
+            params.insert(params.begin(), module.operator std::string());
+            return params;
+          }();
+          rm = mc_rbdyn::RobotLoader::get_robot_module(params);
+          if(!rm) { mc_rtc::log::error_and_throw("Failed to load {} as specified in configuration", rname); }
+        }
+        else if(rconfig.has("visual"))
+        {
+          rm = mc_rbdyn::robotModuleFromVisual(rname, rconfig("visual"));
+          if(!rm)
+          {
+            mc_rtc::log::error_and_throw("Failed to load robot from a 'visual' configuration:\n{}",
+                                         rconfig("visual").dump(true, true));
+          }
+        }
+        if(!rm) { mc_rtc::log::error_and_throw("No robot module or visual description specified for {}", rname); }
+        auto & robot = loadRobot(rm, rname);
+        load_robot_config(robot);
+        rconfig = config("robots")(rname);
+        init_robot(rname, rconfig);
+      }
+      else
       {
         // This is not the main robot but the configuration does not have a
         // robot module specified. This can happen if the user intended his
@@ -252,23 +286,6 @@ MCController::MCController(const std::vector<std::shared_ptr<mc_rbdyn::RobotModu
         // different configuration. In this case, the configuration is simply
         // ignored as it does not correspond to any robot currently loaded
         // within this controller.
-      }
-      else
-      {
-        auto params = [&]() -> std::vector<std::string>
-        {
-          auto module = rconfig("module");
-          if(module.isArray()) { return module.operator std::vector<std::string>(); }
-          std::vector<std::string> params = rconfig("params", std::vector<std::string>{});
-          params.insert(params.begin(), module.operator std::string());
-          return params;
-        }();
-        auto rm = mc_rbdyn::RobotLoader::get_robot_module(params);
-        if(!rm) { mc_rtc::log::error_and_throw("Failed to load {} as specified in configuration", rname); }
-        auto & robot = loadRobot(rm, rname);
-        load_robot_config(robot);
-        rconfig = config("robots")(rname);
-        init_robot(rname, rconfig);
       }
     }
     mc_rtc::log::info("Robots loaded in controller:");
@@ -307,8 +324,10 @@ MCController::MCController(const std::vector<std::shared_ptr<mc_rbdyn::RobotModu
     }
   }
   /** Create contacts */
-  if(config.has("contacts")) { contacts_ = config("contacts"); }
-  contacts_changed_ = true;
+  if(auto contacts = config.find("contacts"))
+  {
+    for(const auto & c : *contacts) { addContact(c); }
+  }
   mc_rtc::log::info("MCController(base) ready");
 }
 
@@ -898,12 +917,18 @@ void MCController::removeCollisions(const std::string & r1, const std::string & 
 
 void MCController::addContact(const Contact & c)
 {
-  bool inserted;
-  ContactSet::iterator it;
-  std::tie(it, inserted) = contacts_.insert(c);
+  { // Ensure that optional robots have a name for correct unique set insertion
+    // TODO: it would be better not to store the robots name as optional
+    // in mc_control::Contact to avoid this kind of issue by-design
+    auto & cc = const_cast<Contact &>(c);
+    cc.r1 = c.r1.has_value() ? c.r1.value() : robot().name();
+    cc.r2 = c.r2.has_value() ? c.r2.value() : robot().name();
+  }
+
+  auto [it, inserted] = contacts_.insert(c);
   contacts_changed_ |= inserted;
-  const auto & r1 = c.r1.has_value() ? c.r1.value() : robot().name();
-  const auto & r2 = c.r2.has_value() ? c.r2.value() : robot().name();
+  const auto & r1 = c.r1.value();
+  const auto & r2 = c.r2.value();
   if(!inserted)
   {
     if(it->dof != c.dof)
@@ -929,6 +954,12 @@ void MCController::addContact(const Contact & c)
 
 void MCController::removeContact(const Contact & c)
 {
+  { // Ensure that optional robots have a name for correct unique set insertion
+    auto & cc = const_cast<Contact &>(c);
+    cc.r1 = c.r1.has_value() ? c.r1.value() : robot().name();
+    cc.r2 = c.r2.has_value() ? c.r2.value() : robot().name();
+  }
+
   contacts_changed_ |= static_cast<bool>(contacts_.erase(c));
   if(contacts_changed_)
   {
