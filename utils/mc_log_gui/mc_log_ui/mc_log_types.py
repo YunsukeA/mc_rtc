@@ -38,17 +38,44 @@ class PlotType(Enum):
 
 class LineStyle(object):
     def __init__(
-        self, color="black", linestyle="-", linewidth=1.0, visible=False, label=""
+        self,
+        color="black",
+        linestyle="-",
+        linewidth=1.0,
+        visible=False,
+        label="",
+        major_spacing=None,
+        major_spacing_x=None,
+        major_spacing_y=None,
     ):
         self.color = color
         self.linestyle = linestyle
         self.linewidth = linewidth
         self.visible = visible
         self.label = label
+        # Major grid spacing in axis units (None = automatic)
+        # Support separate X/Y spacings; preserve legacy major_spacing for
+        # backward compatibility.
+        self.major_spacing_x = major_spacing_x
+        self.major_spacing_y = major_spacing_y
+        if major_spacing is not None:
+            # If legacy key is present and specific axes not provided, set both
+            if self.major_spacing_x is None:
+                self.major_spacing_x = major_spacing
+            if self.major_spacing_y is None:
+                self.major_spacing_y = major_spacing
 
     def __repr__(self):
-        return "color: {}, linestyle: {}, linewidth: {}, visible: {}, label: {}".format(
-            self.color, self.linestyle, self.linewidth, self.visible, self.label
+        return (
+            "color: {}, linestyle: {}, linewidth: {}, visible: {}, label: {}, major_spacing_x: {}, major_spacing_y: {}".format(
+                self.color,
+                self.linestyle,
+                self.linewidth,
+                self.visible,
+                self.label,
+                self.major_spacing_x,
+                self.major_spacing_y,
+            )
         )
 
 

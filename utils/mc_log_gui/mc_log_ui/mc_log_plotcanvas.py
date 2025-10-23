@@ -333,6 +333,39 @@ class PlotYAxis(object):
 
     def drawGrid(self):
         if len(self.plots):
+            # If a major spacing is configured in the grid style, apply it to
+            # the X axis before drawing the grid so tick locations and grid
+            # lines match the requested spacing. This avoids other parts of
+            # the code recomputing ticks and overriding the user's choice.
+            try:
+                # Prefer separate X/Y settings, fall back to legacy major_spacing
+                msx = getattr(self.grid, "major_spacing_x", None)
+                msy = getattr(self.grid, "major_spacing_y", None)
+                legacy = getattr(self.grid, "major_spacing", None)
+                if msx is None:
+                    msx = legacy
+                if msy is None:
+                    msy = legacy
+                import matplotlib.ticker as mticker
+
+                # Use the figure's x-axis reference if available
+                try:
+                    xa = self._x_axis
+                except Exception:
+                    xa = self._axis
+                try:
+                    if msx is not None:
+                        xa.xaxis.set_major_locator(mticker.MultipleLocator(msx))
+                except Exception:
+                    pass
+                try:
+                    if msy is not None:
+                        xa.yaxis.set_major_locator(mticker.MultipleLocator(msy))
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
             self._axis.grid(
                 color=self.grid.color,
                 linestyle=self.grid.linestyle,
@@ -1281,6 +1314,84 @@ class PlotCanvasWithToolbar(PlotFigure, QWidget):
 
         self.canvas.mpl_connect("draw_event", self.on_draw)
         self.toolbar = NavigationToolbar(self.canvas, self)
+
+        # Override the toolbar save behavior so the user can choose the output
+        # resolution (DPI) when saving a figure from the GUI. The override
+        # opens a save dialog, then asks for a DPI value and finally saves the
+        # figure with bbox_inches='tight' and the selected DPI.
+        try:
+            def _save_figure_with_scale(*args, **kwargs):
+                # Ask user for a scale multiplier instead of DPI. 1 = current
+                # size, 2 = double, 4 = quadruple, etc.
+                basedir = QtCore.QStandardPaths.writableLocation(
+                    QtCore.QStandardPaths.DocumentsLocation
+                )
+                filters = "Image (*.png *.svg *.pdf *.jpg *.jpeg)"
+                fpath, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    self, "Save figure", basedir, filter=filters
+                )
+                if not fpath:
+                    return
+
+                scale, ok = QtWidgets.QInputDialog.getDouble(
+                    self,
+                    "Save scale",
+                    "Scale (1 = original size, 2 = double, 4 = quadruple):",
+                    1.0,
+                    0.1,
+                    16.0,
+                    1,
+                )
+                if not ok:
+                    return
+
+                try:
+                    fig = self.canvas.figure
+                    # Compute new size in inches
+                    orig_size = fig.get_size_inches()
+                    new_size = orig_size * float(scale)
+                    # Temporarily set figure size for saving
+                    fig.set_size_inches(new_size)
+                    fig.savefig(fpath, bbox_inches="tight")
+                except Exception:
+                    # Fallback: try saving without resizing
+                    try:
+                        fig.savefig(fpath)
+                    except Exception:
+                        pass
+                finally:
+                    # Restore original figure size to avoid changing on-screen layout
+                    try:
+                        fig.set_size_inches(orig_size)
+                    except Exception:
+                        pass
+
+            # Try to find the toolbar's original Save action and replace it with
+            # a new action hooked to our DPI-aware save handler. Hiding the
+            # original keeps the toolbar layout stable while ensuring our
+            # handler is invoked.
+            save_action = None
+            for act in self.toolbar.actions():
+                try:
+                    txt = act.text() or ""
+                except Exception:
+                    txt = ""
+                if "save" in txt.lower():
+                    save_action = act
+                    break
+
+            if save_action is not None:
+                new_act = QtWidgets.QAction(save_action.icon(), save_action.text() + " (Scale)", self)
+                new_act.triggered.connect(_save_figure_with_scale)
+                # Insert new action before the original and hide the original
+                self.toolbar.insertAction(save_action, new_act)
+                save_action.setVisible(False)
+            else:
+                # Fallback: attach attribute (older matplotlib versions may call toolbar.save_figure)
+                setattr(self.toolbar, "save_figure", _save_figure_with_scale)
+        except Exception:
+            # Don't break the UI if replacement fails
+            pass
 
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(self.canvas)

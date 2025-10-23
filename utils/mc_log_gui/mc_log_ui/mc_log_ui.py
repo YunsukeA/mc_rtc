@@ -209,12 +209,88 @@ class GridStyleDialog(CommonStyleDialog):
         self.enabled.setChecked(style.visible)
         self.layout.insertRow(0, "Visible", self.enabled)
 
+        # Major grid spacing (X and Y axis) - None means automatic
+        self.majorSpacingXSpin = QtWidgets.QDoubleSpinBox()
+        self.majorSpacingXSpin.setMinimum(0.0)
+        self.majorSpacingXSpin.setMaximum(1e6)
+        self.majorSpacingXSpin.setDecimals(6)
+        self.majorSpacingYSpin = QtWidgets.QDoubleSpinBox()
+        self.majorSpacingYSpin.setMinimum(0.0)
+        self.majorSpacingYSpin.setMaximum(1e6)
+        self.majorSpacingYSpin.setDecimals(6)
+
+        # Initialize from style if available (support legacy 'major_spacing')
+        msx = getattr(style, "major_spacing_x", None)
+        msy = getattr(style, "major_spacing_y", None)
+        legacy = getattr(style, "major_spacing", None)
+        if msx is None and legacy is not None:
+            msx = legacy
+        if msy is None and legacy is not None:
+            msy = legacy
+        if msx is not None:
+            try:
+                self.majorSpacingXSpin.setValue(float(msx))
+            except Exception:
+                pass
+        if msy is not None:
+            try:
+                self.majorSpacingYSpin.setValue(float(msy))
+            except Exception:
+                pass
+
+        self.layout.insertRow(1, "X major spacing (0 = auto)", self.majorSpacingXSpin)
+        self.layout.insertRow(2, "Y major spacing (0 = auto)", self.majorSpacingYSpin)
+
         self.save = QtWidgets.QCheckBox()
         self.layout.insertRow(self.layout.rowCount() - 2, "Save as default", self.save)
 
     def apply(self):
         super(GridStyleDialog, self).apply()
         self.style.visible = self.enabled.isChecked()
+        # Debug: print when apply is called and the spacing values
+        try:
+            print("[GridStyleDialog] apply called for", self.name)
+            print("[GridStyleDialog] majorSpacingXSpin value:", self.majorSpacingXSpin.value())
+            print("[GridStyleDialog] majorSpacingYSpin value:", self.majorSpacingYSpin.value())
+        except Exception:
+            pass
+
+        valx = float(self.majorSpacingXSpin.value())
+        valy = float(self.majorSpacingYSpin.value())
+        if valx <= 0.0:
+            self.style.major_spacing_x = None
+        else:
+            self.style.major_spacing_x = valx
+        if valy <= 0.0:
+            self.style.major_spacing_y = None
+        else:
+            self.style.major_spacing_y = valy
+
+        try:
+            import matplotlib.ticker as mticker
+
+            # Apply to left axis: X spacing -> xaxis, Y spacing -> yaxis
+            try:
+                ax = self.canvas._left().axis()
+                if getattr(self.style, "major_spacing_x", None) is not None:
+                    ax.xaxis.set_major_locator(mticker.MultipleLocator(self.style.major_spacing_x))
+                if getattr(self.style, "major_spacing_y", None) is not None:
+                    ax.yaxis.set_major_locator(mticker.MultipleLocator(self.style.major_spacing_y))
+            except Exception:
+                pass
+            # Apply to right axis if present
+            try:
+                if self.canvas._right() is not None:
+                    ax2 = self.canvas._right().axis()
+                    if getattr(self.style, "major_spacing_x", None) is not None:
+                        ax2.xaxis.set_major_locator(mticker.MultipleLocator(self.style.major_spacing_x))
+                    if getattr(self.style, "major_spacing_y", None) is not None:
+                        ax2.yaxis.set_major_locator(mticker.MultipleLocator(self.style.major_spacing_y))
+            except Exception:
+                pass
+        except Exception:
+            pass
+
         self.canvas.draw()
         if self.save.isChecked():
             self.parent().gridStyles[self.name] = self.style
@@ -258,21 +334,18 @@ class ColorButtonRightClick(QtWidgets.QPushButton):
             self.setStyleSheet(
                 "background-color: {color}; color: {color}".format(color=color.name())
             )
+        # Notify parent that a custom color has been selected
         self.parent().setCustom()
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == QtCore.Qt.RightButton:
-            self.parent().removeColorFromSelector(self)
-        super(ColorButtonRightClick, self).mouseReleaseEvent(event)
-
+        return
 
 class ColorsSchemeConfigurationDialog(QtWidgets.QDialog):
-    @InitDialogWithOkCancel(Layout=QtWidgets.QFormLayout, apply_=False)
+    @InitDialogWithOkCancel(Layout=QtWidgets.QGridLayout)
     def __init__(self, parent, scheme, apply_cb):
-        self.scheme = copy.deepcopy(scheme)
+        self.scheme = scheme
+        self.apply_cb = apply_cb
 
+        # Colormap selector
         self.setSelector = QtWidgets.QComboBox(self)
-        # Qualitative maps, see https://matplotlib.org/3.1.0/gallery/color/colormap_reference.html
         qualitative = [
             "Pastel1",
             "Pastel2",
@@ -283,11 +356,9 @@ class ColorsSchemeConfigurationDialog(QtWidgets.QDialog):
             "Set2",
             "Set3",
             "tab10",
-            "tab20",
-            "tab20b",
-            "tab20c",
         ]
-        [self.setSelector.addItem(s) for s in qualitative]
+        for q in qualitative:
+            self.setSelector.addItem(q)
         self.setSelector.addItem("custom")
         self.setSelector.setCurrentText(self.scheme.cm_)
         self.setSelector.currentIndexChanged.connect(self.cmChanged)
@@ -302,8 +373,6 @@ class ColorsSchemeConfigurationDialog(QtWidgets.QDialog):
         self.colorSelection = QtWidgets.QGridLayout()
         self.setupColorSelection()
         self.layout.addRow(self.colorSelection)
-
-        self.apply_cb = apply_cb
 
     def cmChanged(self):
         cm = self.setSelector.currentText()
