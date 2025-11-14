@@ -292,6 +292,24 @@ void ObserverbasedImpedanceTask::addToLogger(mc_rtc::Logger & logger)
   std::string subcategory_force = "forcesensor_surfaceFrame";
   std::string wrench_category = "_wrench_";
 
+  // impedance parameters
+  logger.addLogEntry(name_ + "_gains_M", this, [this]() -> const sva::ImpedanceVecd & { return gains().M().vec(); });
+  logger.addLogEntry(name_ + "_gains_D", this, [this]() -> const sva::ImpedanceVecd & { return gains().D().vec(); });
+  logger.addLogEntry(name_ + "_gains_K", this, [this]() -> const sva::ImpedanceVecd & { return gains().K().vec(); });
+  logger.addLogEntry(name_ + "_gains_wrench", this,
+                     [this]() -> const sva::ImpedanceVecd & { return gains().wrench().vec(); });
+
+  // compliance values
+  logger.addLogEntry(name_ + "_compliancePose", this, [this]() { return compliancePose(); });
+  MC_RTC_LOG_HELPER(name_ + "_deltaCompliancePose", deltaCompPoseW_);
+  MC_RTC_LOG_HELPER(name_ + "_deltaComplianceVel", deltaCompVelW_);
+  MC_RTC_LOG_HELPER(name_ + "_deltaComplianceAccel", deltaCompAccelW_);
+
+  // target values
+  MC_RTC_LOG_HELPER(name_ + "_targetPose", targetPoseW_);
+  MC_RTC_LOG_HELPER(name_ + "_targetVel", targetVelW_);
+  MC_RTC_LOG_HELPER(name_ + "_targetAccel", targetAccelW_);
+
   MC_RTC_LOG_HELPER(category + wrench_category + subcategory_force, surfaceWrench_);
   MC_RTC_LOG_HELPER(category + wrench_category + subcategory_est + "_ExternalWrench_centroid",
                     estimatedExternalWrench_centroid_);
