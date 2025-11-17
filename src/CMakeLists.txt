@@ -118,31 +118,33 @@ set(mc_rtc_utils_SRC
 )
 
 set(mc_rtc_utils_HDR
-  "${VERSION_HEADER}"
-  mc_rtc/internals/json.h
-  mc_rtc/internals/msgpack.h
-  mc_rtc/internals/yaml.h
-  mc_rtc/internals/LogEntry.h
-  ../include/mc_rtc/Configuration.h
-  ../include/mc_rtc/ConfigurationHelpers.h
-  ../include/mc_rtc/MessagePackBuilder.h
-  ../include/mc_rtc/logging.h
-  ../include/mc_rtc/log/FlatLog.h
-  ../include/mc_rtc/log/iterate_binary_log.h
-  ../include/mc_rtc/log/Logger.h
-  ../include/mc_rtc/io_utils.h
-  ../include/mc_rtc/utils.h
-  ../include/mc_rtc/utils_api.h
-  ../include/mc_rtc/constants.h
-  ../include/mc_rtc/DataStore.h
-  ../include/mc_rtc/type_name.h
-  ../include/mc_rtc/debug.h
-  ../include/mc_rtc/deprecated.h
-  ../include/mc_rtc/path.h
-  ../include/mc_rtc/pragma.h
-  ../include/mc_rtc/shared.h
-  ../include/mc_rtc/visual_utils.h
-  ../include/mc_rtc/utils/heatmap.h
+    "${VERSION_HEADER}"
+    mc_rtc/internals/json.h
+    mc_rtc/internals/msgpack.h
+    mc_rtc/internals/yaml.h
+    mc_rtc/internals/LogEntry.h
+    ../include/mc_rtc/Configuration.h
+    ../include/mc_rtc/ConfigurationHelpers.h
+    ../include/mc_rtc/MessagePackBuilder.h
+    ../include/mc_rtc/logging.h
+    ../include/mc_rtc/log/FlatLog.h
+    ../include/mc_rtc/log/iterate_binary_log.h
+    ../include/mc_rtc/log/Logger.h
+    ../include/mc_rtc/io_utils.h
+    ../include/mc_rtc/utils.h
+    ../include/mc_rtc/utils_api.h
+    ../include/mc_rtc/constants.h
+    ../include/mc_rtc/DataStore.h
+    ../include/mc_rtc/type_name.h
+    ../include/mc_rtc/debug.h
+    ../include/mc_rtc/deprecated.h
+    ../include/mc_rtc/path.h
+    ../include/mc_rtc/pragma.h
+    ../include/mc_rtc/shared.h
+    ../include/mc_rtc/visual_utils.h
+    ../include/mc_rtc/utils/heatmap.h
+        ../include/mc_rtc/clock.h
+    ../include/mc_rtc/threading/AsyncJob.h
 )
 
 add_library(mc_rtc_utils SHARED ${mc_rtc_utils_SRC} ${mc_rtc_utils_HDR})
