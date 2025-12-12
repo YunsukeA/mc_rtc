@@ -788,7 +788,7 @@ class MCLogTab(QtWidgets.QWidget):
 
         def update_y_selector(ySelector):
             self.tree_view.update_y_selector(ySelector, ySelector)
-                        font_metric = QtGui.QFontMetrics(ySelector.font())
+            font_metric = QtGui.QFontMetrics(ySelector.font())
 
             indices = ySelector.model().match(
                 ySelector.model().index(0, 0),
