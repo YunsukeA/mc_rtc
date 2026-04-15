@@ -55,7 +55,7 @@ void ObserverbasedImpedanceTask::update(mc_solver::QPSolver & solver)
     measuredWrench_ = transformExternalWrench(estimatedExternalWrench_centroid_, surface());
     estimationError_ = surfaceWrench_ - measuredWrench_;
   }
-  else if(usingWrench_ == "None") { measuredWrench_ = sva::ForceVecd::Zero(); }
+  else if(usingWrench_ == "None") { measuredWrench_ = targetWrench_; } // should be fixed
   else if(usingWrench_ == "Sensor") { measuredWrench_ = frame_->wrench(); }
   else
   {
