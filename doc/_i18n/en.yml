@@ -3,11 +3,15 @@ langs:
 carousel:
   previous: Previous
   next: Next
-  SYHI2JmJ-lk: Autonomous car driving by a humanoid robot
-  vFCFKAunsYM: HRP-4 climbing up stairs
-  C3Y2Xc6sEY4: "Humanoid in aircraft manufacturing: operating a circuit-breaker"
-  qzEnCGlT93s: "Human-Robot Interaction Applications"
+  fW7lFUToMjc: "COMANOID: Humanoid robots in aircraft manufacturing"
+  CaOOoSqWjCo: "ANA Avatar Xprize: Cybernetic avatar system for exploration and skill transfer"
+  zIoZQTKCT7I: "Humanoid Sit-to-stand assistance with the HRP-4 humanoid robot"
+  6QZwARIV_yQ: "Excerpt of the Robotic Dance Performance at CDA d’Enghien 2023"
+  SYHI2JmJ-lk: "DARPA Robotics Challenge: Autonomous car driving by a humanoid robot"
   FT2CD1UiExs: "HRP-5P performing bolt fastening with visual servoing"
+  vFCFKAunsYM: "HRP-4 climbing up stairs"
+  qzEnCGlT93s: "Human-Robot Interaction Applications"
+  C3Y2Xc6sEY4: "Humanoid in aircraft manufacturing: operating a circuit-breaker"
 features:
   easy:
     heading: Simple tools for complex problems
@@ -50,6 +54,8 @@ interfaces:
   UDP Communication: A generic UDP-based client/server interface implementation. The client is a regular mc_rtc interface that gets data through UDP sockets. The server can easily be implemented to interface with your own robot.<br />The following server implementations are currently available&#58; <ul><li>An OpenRTM server is provided and may be used with HRP robots.</li><li>A server implementation is also available for the <a href="https://hal.archives-ouvertes.fr/hal-02101562">BAZAR</a> robot.</li></ul>
   MuJoCo: MuJoCo is a fast and accurate physics engine used widely in robotics, biomechanics, and animations. mc_mujoco enables simulation of <i>any</i> robot in MuJoCo controlled with <i>any</i> mc-rtc controller.
   RTDE: The Real-Time Data Exchange (RTDE) interface provides a way to synchronize external applications with the UR controller over a standard TCP/IP connection, without breaking any real-time properties of the UR controller. The mc_rtde interface allows to use mc_rtc to control Universal Robot's manipulators.
+  Kortex: Kinova Kortex is a unified software and API platform for controlling Kinova robotic arms. It provides low-level and high-level control, vision integration, and safety features in a single framework. The mc_kortex interface allows to use mc_rtc to control Kinova's manipulators.
+  VAL3: VAL3 is a dedicated robotics language that provides powerful function sets for high-end robotic applications. It offers a flexible and modular approach, allowing integrators and OEMs to reuse and leverage accumulated knowledge for tailored solutions. The mc_staubli_val3 interface allows mc_rtc to control robots programmed with the VAL3 language, supporting seamless integration.
 robots:
   description: Description
   module: Module

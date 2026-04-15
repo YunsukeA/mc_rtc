@@ -1,39 +1,84 @@
-<p>There is three ways to integrate your robot to mc_rtc:</p>
+<p>There are three ways to integrate your robot into <code>mc_rtc</code>:</p>
 
 <ol>
   <li>Using the <code>env</code>/<code>object</code> loader</li>
   <li>Using a JSON/YAML file and the <code>json</code> loader</li>
-  <li>Write a C++ <code>RobotModule</code> implementation</li>
+  <li>Writing a C++ <code>RobotModule</code> implementation</li>
 </ol>
 
-<p>The first approach is well suited for simple robots that don't have sensors attached to them (i.e. objects and environments as the name suggest). The requirements for such robots are provided in the following section.</p>
+<h2>Loader Overview</h2>
 
-<p>The second approach allow you to provide more information about the robot.</p>
+<ul>
+  <li>
+    <code>env</code>/<code>object</code> loader:
+    Best suited for simple robots or static objects and environments.
+    Convex hulls can still be generated automatically for collision meshes.
+  </li>
+  <li>
+    <code>json</code> loader:
+    Adds structured metadata to the robot (e.g., joints, sensors, grippers).
+    Supports automatic convex hull generation from URDF meshes.
+  </li>
+  <li>
+    C++ <code>RobotModule</code>:
+    Provides full control over loading, configuration, and logic.
+    Fully supports automatic convex generation and caching.
+  </li>
+</ul>
 
-<p>The last option has the most flexibility. The main benefits are that your robot will be extremely easy to load and you can easily provide several variants of your robot with minimal efforts.</p>
+<h2>Using the <code>env</code>/<code>object</code> Loader</h2>
 
-{% include h2.html title="Using the <code>env</code>/<code>object</code> loader" %}
-
-<p>When loading the robot, use the following invokation:</p>
+<p>To load your robot using this loader, use the following invocation:</p>
 
 {% include show_sources.html sources=page.env_object_example copy=false id="env_object_example" %}
 
-{% include h3.html title="Organization of your robot description package" %}
+<h3>Organization of Your Robot Description Package</h3>
 
-<p>Given a robot's description folder located at <code>LOCATION</code> and a robot named <code>NAME</code>, mc_rtc expects your data to be organized as follows:</p>
+<p>Given a robot description directory located at <code>LOCATION</code> and a robot named <code>NAME</code>, mc_rtc expects your data to be structured as follows:</p>
 
 <ul>
-  <li>the URDF is located at <code>$LOCATION/urdf/$NAME.urdf</code></li>
-  <li>the RSDF files are in the folder <code>$LOCATION/rsdf/$NAME/</code></li>
-  <li>the convex files are in the folder <code>$LOCATION/convex/$NAME/</code> and for a given body: <code>BODY</code>, it's collision convex is in <code>$BODY-ch.txt</code></li>
+  <li>URDF file: <code>$LOCATION/urdf/$NAME.urdf</code></li>
+  <li>RSDF files (optional): <code>$LOCATION/rsdf/$NAME/</code></li>
+  <li>Convex hull files (optional): <code>$LOCATION/convex/$NAME/</code></li>
 </ul>
 
-<p>Furthermore:</p>
+<p>For a body named <code>BODY</code>, the corresponding convex file should be named:</p>
+<code>BODY-ch.txt</code>
+
+<h4>Additional Notes:</h4>
+<ul>
+  <li>The RSDF directory can be empty or not exist at all.</li>
+  <li>Not every body requires a convex file.</li>
+  <li>Convex files that can't be matched to any body are ignored.</li>
+  <li>If convexes are missing, they can be generated automatically for any loader type.</li>
+</ul>
+
+<h3>Automatic Convex Hull Generation</h3>
+
+<p>Regardless of how your robot is loaded (C++, JSON, or env/object), mc_rtc can generate convex hulls automatically from mesh-type collision geometries in the URDF or SRDF.</p>
+
+<h4>How It Works</h4>
 
 <ul>
-  <li>the RSDF folder can be empty or not exist</li>
-  <li>some (or all) bodies don't have to have an associated convex file</li>
-  <li>convex files that cannot be associated to a body automatically will be ignored</li>
+  <li>Meshes in the robot description are sampled to build convex approximations.</li>
+  <li>These convex hulls are cached to avoid regeneration unless explicitly requested.</li>
+  <li>Convex generation can be triggered automatically or manually depending on loader and setup.</li>
+</ul>
+
+<h4>Convex Cache Storage</h4>
+
+<p>Generated convexes are stored in a user-specific local share directory. The base directory is platform-specific :</p>
+
+<ul>
+  <li>Windows: <code>%APPDATA%/mc_rtc/&lt;robot_name&gt;/</code></li>
+  <li>Linux/macOS: <code>$HOME/.local/share/mc_rtc/&lt;robot_name&gt;/</code></li>
+</ul>
+
+<h4>Convex File Naming</h4>
+
+<ul>
+  <li>For bodies with a single mesh: <code>BODY-ch.txt</code></li>
+  <li>For bodies with multiple meshes: <code>BODY_0-ch.txt</code>, <code>BODY_1-ch.txt</code>, etc.</li>
 </ul>
 
 {% include h2.html title="Using the <code>json</code> loader" %}
@@ -55,6 +100,44 @@
 {% include show_sources.html sources=page.robot_module_example copy=false id="robot_module_example" %}
 
 <p>See {% doxygen mc_rbdyn::RobotModule %} documentation for all members that can be provided.</p>
+
+
+{% include h2.html title="Connecting existing robot modules" %}
+
+<p>Regardless of how the robot module was created, the framework makes it possible to connect/disconnect exisitng robot modules, actuated or not. This is very useful to provide variants of existing robots modules such as:</p>
+
+<ul>
+  <li>Adding tools (grippers, etc) to an existing robot</li>
+  <li>Mounting a robot on a support (wall, table, etc)</li>
+  <li>Modular robotics</li>
+</ul>
+
+<p>In any case the merged robot is a new robot module that can be loaded and used as a single robot in the framework. For now, we do not provide a way to seamlessly replace a robot involved in the controller with a variant created by connecting it to another module. This would be very useful in case of tool changing or for modular robotics to connect multiple actuated modules together.</p>
+
+<p>This feature is planned, in the meanwhile users interested in trying to do this themselves need to:</p>
+<ul>
+  <li>Remove all tasks and constraints in which the robot is involved from the solver</li>
+  <li>Remove all gui/log callbacks that involve the robot</li>
+  <li>Remove the robot</li>
+  <li>Connect the modules and load the connected variant</li>
+  <li>Re-add all tasks/contraints/callbacks</li>
+</ul>
+
+To connect modules together, see {% doxygen mc_rbdyn::RobotModule::connect %} and {% doxygen mc_rbdyn::RobotModule::ConnectionParameters %}. The main function to use is defined as:<br />
+
+{% highlight c++ %}
+RobotModule RobotModule::connect(const mc_rbdyn::RobotModule & other,
+                                 const std::string & this_body,
+                                 const std::string & other_body,
+                                 const std::string & prefix,
+                                 const ConnectionParameters & params) const
+{% endhighlight %}
+
+For example:
+
+{% include show_sources.html sources=page.robot_module_connect_example copy=false id="robot_module_connect_example" %}
+
+You can also refer to [mc_panda_lirmm](https://github.com/jrl-umi3218/mc_panda_lirmm) for a real-life example.
 
 {% include h2.html title="Get started" %}
 

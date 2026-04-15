@@ -127,6 +127,7 @@ set(mc_rtc_utils_HDR
     ../include/mc_rtc/ConfigurationHelpers.h
     ../include/mc_rtc/MessagePackBuilder.h
     ../include/mc_rtc/logging.h
+    ../include/mc_rtc/fmt_formatters.h
     ../include/mc_rtc/log/FlatLog.h
     ../include/mc_rtc/log/iterate_binary_log.h
     ../include/mc_rtc/log/Logger.h
@@ -145,6 +146,7 @@ set(mc_rtc_utils_HDR
     ../include/mc_rtc/utils/heatmap.h
         ../include/mc_rtc/clock.h
     ../include/mc_rtc/threading/AsyncJob.h
+    ../include/mc_rtc/SignalSlot.h
 )
 
 add_library(mc_rtc_utils SHARED ${mc_rtc_utils_SRC} ${mc_rtc_utils_HDR})
@@ -154,14 +156,18 @@ target_compile_definitions(mc_rtc_utils PUBLIC ${BOOST_USE_STACKTRACE_DEFINE})
 target_link_libraries(
   mc_rtc_utils
   PUBLIC SpaceVecAlg::SpaceVecAlg
-  Boost::${BOOST_STACKTRACE}
-  Boost::filesystem
-  Boost::disable_autolinking
-  ${YAML_CPP_TARGET}
-  spdlog::spdlog
-  ${CMAKE_DL_LIBS}
+         Boost::${BOOST_STACKTRACE}
+         Boost::filesystem
+         Boost::disable_autolinking
+         ${YAML_CPP_TARGET}
+         spdlog::spdlog
+         eigen-fmt::eigen-fmt
+         ${CMAKE_DL_LIBS}
   PRIVATE $<BUILD_INTERFACE:mc_rtc_3rd_party::RapidJSON>
 )
+if(TARGET mc_rtc_3rd_party::ROS)
+  target_link_libraries(mc_rtc_utils PRIVATE mc_rtc_3rd_party::ROS)
+endif()
 if(TARGET PkgConfig::mc_rtc_3rd_party_libnotify)
   target_link_libraries(mc_rtc_utils PUBLIC PkgConfig::mc_rtc_3rd_party_libnotify)
   target_compile_definitions(mc_rtc_utils PRIVATE MC_RTC_HAS_LIBNOTIFY)
@@ -234,6 +240,7 @@ set(mc_rbdyn_SRC
     mc_rbdyn/RobotModule.cpp
     mc_rbdyn/RobotModule_visual.cpp
     mc_rbdyn/inertia.cpp
+    mc_rbdyn/RobotModule_connect.cpp
     mc_rbdyn/configuration_io.cpp
     mc_rbdyn/ZMP.cpp
     mc_control/generic_gripper.cpp
@@ -343,12 +350,13 @@ target_compile_definitions(mc_rbdyn PRIVATE "-DMC_RBDYN_EXPORTS" "-DMC_TVM_EXPOR
 target_link_libraries(
   mc_rbdyn
   PUBLIC RBDyn::Parsers
-  Tasks::Tasks
-  mc_rtc_loader
-  mc_rtc_utils
-  mc_filter
-  GEOS::geos
-  TVM::TVM
+         Tasks::Tasks
+         mc_rtc_loader
+         mc_rtc_utils
+         mc_filter
+         GEOS::geos
+         TVM::TVM
+         mesh_sampling::mesh_sampling
 )
 target_compile_definitions(mc_rbdyn PUBLIC -DUSE_UNSTABLE_GEOS_CPP_API)
 # qhull
@@ -360,9 +368,11 @@ if(MC_RTC_BUILD_STATIC)
 else()
   target_link_libraries(mc_rbdyn PRIVATE qhullstatic_r qhullcpp)
 endif()
-target_include_directories(
-  mc_rbdyn SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../3rd-party/qhull/src"
-)
+
+if(TARGET mc_rtc_3rd_party::ROS)
+  target_link_libraries(mc_rbdyn PRIVATE mc_rtc_3rd_party::ROS)
+endif()
+
 install_mc_rtc_lib(mc_rbdyn)
 
 set(mc_rtc_gui_SRC mc_rtc/gui/StateBuilder.cpp mc_rbdyn/gui/RobotConvex.cpp
